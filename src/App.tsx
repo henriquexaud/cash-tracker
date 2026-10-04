@@ -11,9 +11,11 @@ import {
   LayoutDashboard,
   ListFilter,
   LoaderCircle,
+  Moon,
   Settings2,
   ShieldCheck,
   TrendingUp,
+  Sun,
   Wallet,
   X,
 } from "lucide-react";
@@ -56,6 +58,7 @@ import {
   SettingsPage,
 } from "./Pages";
 import type { Actions, Page, PageProps } from "./ui-types";
+import { useTheme } from "./theme";
 
 const navigation: { id: Page; label: string; icon: typeof Wallet }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
@@ -89,6 +92,7 @@ function downloadBackup(data: AppData, prefix = "cash-tracker") {
 }
 
 export default function App() {
+  const theme = useTheme();
   const [data, setData] = useState<AppData | null>(null);
   const [loadError, setLoadError] = useState("");
   const [page, setPage] = useState<Page>(readPage);
@@ -745,6 +749,7 @@ export default function App() {
     offlineReady,
     persistent,
     canInstall: !!installPrompt,
+    theme,
   };
   const CurrentPage = {
     dashboard: DashboardPage,
@@ -811,6 +816,23 @@ export default function App() {
                   : "Você está offline"}
             </span>
             <button
+              type="button"
+              className="icon-button theme-toggle"
+              title={`Ativar tema ${theme.resolvedTheme === "dark" ? "claro" : "escuro"}`}
+              aria-label={`Ativar tema ${theme.resolvedTheme === "dark" ? "claro" : "escuro"}`}
+              onClick={() =>
+                theme.setPreference(
+                  theme.resolvedTheme === "dark" ? "light" : "dark",
+                )
+              }
+            >
+              {theme.resolvedTheme === "dark" ? (
+                <Sun size={18} />
+              ) : (
+                <Moon size={18} />
+              )}
+            </button>
+            <button
               className="icon-button topbar-help"
               title="Sobre seus dados locais"
               aria-label="Sobre seus dados locais"
@@ -842,7 +864,7 @@ export default function App() {
                     history:
                       "Salários e orçamentos, desde os primeiros registros.",
                     wealth: "Contas, aportes, rendimentos e objetivos.",
-                    settings: "Backup, instalação e dados locais.",
+                    settings: "Aparência, backup e dados locais.",
                   }[page]
                 }
               </p>
@@ -876,6 +898,17 @@ export default function App() {
                 >
                   <ChevronRight size={17} />
                 </button>
+                {month !== currentMonth() && (
+                  <button
+                    type="button"
+                    className="text-button month-current"
+                    title="Voltar ao mês atual"
+                    aria-label="Voltar ao mês atual"
+                    onClick={() => monthChange(currentMonth())}
+                  >
+                    Atual
+                  </button>
+                )}
               </div>
             )}
           </div>

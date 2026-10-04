@@ -23,6 +23,7 @@ export function Modal({
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const pointerStartedOutside = useRef(false);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
@@ -105,8 +106,23 @@ export function Modal({
   return createPortal(
     <div
       className="modal-backdrop"
+      onPointerDown={(event) => {
+        pointerStartedOutside.current = event.target === event.currentTarget;
+      }}
+      onPointerUp={(event) => {
+        pointerStartedOutside.current &&=
+          event.target === event.currentTarget;
+      }}
+      onPointerCancel={() => {
+        pointerStartedOutside.current = false;
+      }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (
+          pointerStartedOutside.current &&
+          event.target === event.currentTarget
+        )
+          onClose();
+        pointerStartedOutside.current = false;
       }}
     >
       <div

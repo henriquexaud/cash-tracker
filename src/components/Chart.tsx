@@ -1,4 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { formatMoney, monthLabel } from "../domain/finance";
 
 export interface ChartPoint {
@@ -7,10 +15,22 @@ export interface ChartPoint {
   month: string;
 }
 
+const hiddenText: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
 export function Chart({
   points,
   title,
-  color = "#3f7357",
+  color = "var(--chart-line, var(--green))",
   height = 210,
 }: {
   points: ChartPoint[];
@@ -19,11 +39,15 @@ export function Chart({
   height?: number;
 }) {
   const id = useId().replace(/:/g, "");
-  const [active, setActive] = useState<number | null>(null);
-  const activeIndex = active !== null && active < points.length ? active : null;
+  const [activeMonth, setActiveMonth] = useState<string | null>(null);
+  const foundIndex = points.findIndex((point) => point.month === activeMonth);
+  const activeIndex = foundIndex >= 0 ? foundIndex : null;
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
   const hasPoints = points.length > 0;
+  useEffect(() => {
+    if (activeMonth !== null && foundIndex < 0) setActiveMonth(null);
+  }, [activeMonth, foundIndex]);
   useEffect(() => {
     const element = container.current;
     if (!element) return;
@@ -46,6 +70,40 @@ export function Chart({
     bottom = 30;
   const chartW = width - left - right,
     chartH = height - top - bottom;
+  const selectedIndex = activeIndex ?? points.length - 1;
+  const selectedPoint = points[selectedIndex];
+  const selectedLabel = `${monthLabel(selectedPoint.month, true)}: ${formatMoney(selectedPoint.value)}`;
+  const selectPoint = (index: number) =>
+    setActiveMonth(points[Math.max(0, Math.min(points.length - 1, index))].month);
+  const handleKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
+    let nextIndex: number;
+    switch (event.key) {
+      case "ArrowLeft":
+      case "ArrowDown":
+        nextIndex = selectedIndex - 1;
+        break;
+      case "ArrowRight":
+      case "ArrowUp":
+        nextIndex = selectedIndex + 1;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = points.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    selectPoint(nextIndex);
+  };
+  const handlePointer = (event: PointerEvent<SVGSVGElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (!bounds.width) return;
+    const position = ((event.clientX - bounds.left) / bounds.width) * width;
+    selectPoint(Math.round(((position - left) / chartW) * (points.length - 1)));
+  };
   const minValue = Math.min(0, ...points.map((p) => p.value));
   const maximum = Math.max(10000, ...points.map((p) => p.value));
   const scale = Math.pow(10, Math.floor(Math.log10(maximum)));
@@ -81,21 +139,55 @@ export function Chart({
     <div
       ref={container}
       className="chart"
-      onPointerLeave={() => setActive(null)}
+      onPointerLeave={(event) => {
+        if (
+          event.pointerType === "mouse" &&
+          !event.currentTarget.contains(document.activeElement)
+        )
+          setActiveMonth(null);
+      }}
     >
+      <span id={`summary-${id}`} style={hiddenText}>
+        {points.length} registros. Primeiro valor {formatMoney(points[0].value)} e
+        último valor {formatMoney(points[points.length - 1].value)}.
+      </span>
+      <span id={`instructions-${id}`} style={hiddenText}>
+        Use as setas para explorar os meses, Home para o primeiro e End para o
+        último. Também pode tocar no gráfico para consultar um valor.
+      </span>
+      <span role="status" aria-live="polite" aria-atomic="true" style={hiddenText}>
+        {activeIndex !== null ? selectedLabel : ""}
+      </span>
       {activeIndex !== null && (
-        <div className="chart-tooltip" role="status">
+        <div className="chart-tooltip" aria-hidden="true">
           <span>{monthLabel(points[activeIndex].month, true)}</span>
           <strong>{formatMoney(points[activeIndex].value)}</strong>
         </div>
       )}
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
-        <title>{title}</title>
-        <desc>
-          {points.length} registros. Primeiro valor{" "}
-          {formatMoney(points[0].value)} e último valor{" "}
-          {formatMoney(points[points.length - 1].value)}.
-        </desc>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="slider"
+        tabIndex={0}
+        aria-label={title}
+        aria-describedby={`summary-${id} instructions-${id}`}
+        aria-orientation="horizontal"
+        aria-valuemin={1}
+        aria-valuemax={points.length}
+        aria-valuenow={selectedIndex + 1}
+        aria-valuetext={selectedLabel}
+        style={{ touchAction: "pan-y" }}
+        onKeyDown={handleKeyDown}
+        onFocus={() => selectPoint(selectedIndex)}
+        onBlur={() => setActiveMonth(null)}
+        onPointerDown={(event) => {
+          event.currentTarget.focus();
+          handlePointer(event);
+        }}
+        onPointerMove={(event) => {
+          if (event.pointerType === "mouse" || event.buttons > 0)
+            handlePointer(event);
+        }}
+      >
         <defs>
           <linearGradient id={`fill-${id}`} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity=".16" />
@@ -111,7 +203,7 @@ export function Chart({
                 x2={width - right}
                 y1={y(v)}
                 y2={y(v)}
-                stroke="#e5e8e0"
+                stroke="var(--chart-grid, var(--border))"
                 strokeDasharray={i ? "3 5" : undefined}
               />
               <text
@@ -119,6 +211,7 @@ export function Chart({
                 y={y(v) + 4}
                 textAnchor="end"
                 className="chart-axis"
+                style={{ fill: "var(--chart-axis, var(--muted))" }}
               >
                 {axisMoney(v)}
               </text>
@@ -143,31 +236,17 @@ export function Chart({
               i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"
             }
             className="chart-axis"
+            style={{ fill: "var(--chart-axis, var(--muted))" }}
           >
             {monthLabel(points[i].month, true)}
           </text>
         ))}
-        {points.map((p, i) => (
-          <rect
-            key={p.month}
-            x={x(i) - Math.max(3, chartW / points.length / 2)}
-            y={top}
-            width={Math.max(6, chartW / points.length)}
-            height={chartH}
-            fill="transparent"
-            onPointerEnter={() => setActive(i)}
-          >
-            <title>
-              {monthLabel(p.month)}: {formatMoney(p.value)}
-            </title>
-          </rect>
-        ))}
         <circle
-          cx={x(activeIndex ?? points.length - 1)}
-          cy={y(points[activeIndex ?? points.length - 1].value)}
+          cx={x(selectedIndex)}
+          cy={y(selectedPoint.value)}
           r="4.5"
           fill={color}
-          stroke="#fff"
+          stroke="var(--surface)"
           strokeWidth="2"
           pointerEvents="none"
         />

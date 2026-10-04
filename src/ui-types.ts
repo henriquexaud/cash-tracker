@@ -8,6 +8,7 @@ import type {
   MovementKind,
   Salary,
 } from "./domain/types";
+import type { ThemeSettings } from "./theme";
 
 export type Page = "dashboard" | "budget" | "history" | "wealth" | "settings";
 export interface Actions {
@@ -38,4 +39,5 @@ export interface PageProps {
   offlineReady: boolean;
   persistent: boolean;
   canInstall: boolean;
+  theme: ThemeSettings;
 }
