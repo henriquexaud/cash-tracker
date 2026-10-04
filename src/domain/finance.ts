@@ -306,6 +306,9 @@ export function validateMovement(
   if (!data.accounts.some((account) => account.id === movement.accountId))
     return "Selecione uma conta existente.";
   if (!validDate(movement.date)) return "Informe uma data válida.";
+  if (movement.datePrecision !== undefined &&
+      (movement.datePrecision !== "month" || !movement.date.endsWith("-01")))
+    return "Um lançamento mensal deve usar uma referência válida do mês, sem atribuir um dia exato.";
   if (
     !["opening", "contribution", "withdrawal", "return"].includes(movement.kind)
   )

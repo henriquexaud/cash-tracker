@@ -29,6 +29,8 @@ export interface Movement {
   id: string;
   accountId: string;
   date: string;
+  /** The source identifies only the month; date uses its first day for ordering. */
+  datePrecision?: "month";
   kind: MovementKind;
   amount: number;
   note: string;
@@ -49,6 +51,8 @@ export interface LegacyImport {
   displayedNet: number;
   displayedSaved: string;
   notes: string[];
+  /** The dated history replaces the legacy opening and must not be imported again. */
+  historyImported?: true;
   resolution?: {
     amount: number;
     date: string;

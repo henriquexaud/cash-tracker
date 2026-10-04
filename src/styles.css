@@ -177,6 +177,17 @@ textarea {
 .full-width {
   width: 100%;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Navigation and page structure. */
 .app-shell {
@@ -1199,6 +1210,23 @@ select {
   line-height: 1.7;
   color: var(--warning-text);
 }
+.savings-import-banner {
+  background: var(--notice-background);
+  border-color: var(--notice-border);
+}
+.savings-import-banner > div {
+  min-width: 0;
+}
+.savings-import-banner .legacy-icon {
+  background: var(--green-light);
+  color: var(--green);
+}
+.savings-import-banner p {
+  color: var(--notice-text);
+}
+.savings-import-banner .button {
+  flex-shrink: 0;
+}
 .wealth-columns {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
@@ -1663,6 +1691,136 @@ textarea.input {
 }
 .legacy-review details p {
   margin-top: 12px;
+}
+.modal.savings-history-modal {
+  width: min(100%, 720px);
+}
+.savings-history-modal .modal-body {
+  min-width: 0;
+}
+.savings-history-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.savings-history-summary > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+.savings-history-summary span {
+  display: block;
+  min-height: 36px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.savings-history-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 21px;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.savings-history-summary > div:last-child {
+  background: var(--green-light);
+  border-color: var(--notice-border);
+}
+.savings-history-summary > div:last-child strong {
+  color: var(--green);
+}
+.savings-history-scroll {
+  width: 100%;
+  max-height: min(44dvh, 350px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  scrollbar-color: var(--border-control) var(--surface-soft);
+}
+.savings-history-scroll:focus-visible {
+  outline-offset: 3px;
+}
+.savings-history-scroll-hint {
+  display: none;
+}
+@media (max-width: 760px) {
+  .savings-history-scroll-hint {
+    display: block;
+    margin-top: 8px;
+  }
+}
+.savings-history-table {
+  width: 100%;
+  min-width: 570px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.savings-history-table th,
+.savings-history-table td {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+.savings-history-table th:first-child {
+  left: 0;
+  text-align: left;
+  border-right: 1px solid var(--border-soft);
+}
+.savings-history-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-soft);
+  border-bottom-color: var(--border);
+  font-weight: 500;
+  color: var(--muted);
+}
+.savings-history-table tbody th {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}
+.savings-history-table thead th:first-child {
+  z-index: 2;
+}
+.savings-history-table tbody td:last-child {
+  font-weight: 600;
+}
+.savings-history-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+.savings-history-table tbody tr:last-child > * {
+  background: var(--surface-accent);
+  border-bottom: 0;
+}
+.savings-history-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  border: 1px solid var(--notice-border);
+  border-radius: 7px;
+  background: var(--notice-background);
+  color: var(--notice-text);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.savings-history-notice svg {
+  margin-top: 2px;
+  color: var(--green);
 }
 .toast {
   position: fixed;
@@ -2221,6 +2379,14 @@ textarea.input {
   .legacy-banner .button {
     margin-left: 34px;
   }
+  .savings-import-banner > div {
+    min-width: 0;
+    flex-basis: calc(100% - 44px);
+  }
+  .savings-import-banner .button {
+    max-width: 100%;
+    margin-left: 0;
+  }
   .wealth-columns {
     gap: 20px;
     margin-bottom: 20px;
@@ -2291,6 +2457,42 @@ textarea.input {
   }
   .money-preview strong {
     font-size: 21px;
+  }
+  .savings-history-summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .savings-history-summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 12px;
+  }
+  .savings-history-summary span {
+    min-height: 0;
+    font-size: 11px;
+  }
+  .savings-history-summary strong {
+    margin-top: 0;
+    font-size: 18px;
+    letter-spacing: -0.4px;
+  }
+  .savings-history-summary > div:last-child strong {
+    font-size: 21px;
+  }
+  .savings-history-scroll {
+    max-height: min(38dvh, 300px);
+    margin-top: 16px;
+  }
+  .savings-history-notice {
+    padding: 11px 12px;
+  }
+  .savings-history-modal .modal-footer {
+    flex-wrap: wrap;
+  }
+  .savings-history-modal .modal-footer .button {
+    min-width: 110px;
   }
   .toast {
     left: 50%;

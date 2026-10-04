@@ -394,7 +394,7 @@ export function validateBackup(input: unknown): AppData {
       );
       if (kind !== "opening" && amount === 0)
         invalid(`movements[${index}].amount`, "deve ser diferente de zero");
-      return {
+      const movement: Movement = {
         id: string(item.id, `movements[${index}].id`),
         accountId,
         date: date(item.date, `movements[${index}].date`),
@@ -402,6 +402,19 @@ export function validateBackup(input: unknown): AppData {
         amount,
         note: string(item.note, `movements[${index}].note`, true),
       };
+      if (item.datePrecision !== undefined) {
+        movement.datePrecision = choice<"month">(
+          item.datePrecision,
+          ["month"],
+          `movements[${index}].datePrecision`,
+        );
+        if (!movement.date.endsWith("-01"))
+          invalid(
+            `movements[${index}].date`,
+            "deve usar o primeiro dia como referência do mês, sem afirmar um dia exato",
+          );
+      }
+      return movement;
     },
   );
   unique(
@@ -455,6 +468,16 @@ export function validateBackup(input: unknown): AppData {
   };
   safeTotal(legacy.movements, "total das movimentações legadas");
   safeTotal(legacy.possibleReturns, "total dos possíveis rendimentos legados");
+  if (rawLegacy.historyImported !== undefined) {
+    if (rawLegacy.historyImported !== true)
+      invalid("legacy.historyImported", "deve ser verdadeiro quando presente");
+    if (legacy.status !== "resolved" || rawLegacy.resolution !== undefined)
+      invalid(
+        "legacy.historyImported",
+        "exige o histórico resolvido sem uma confirmação de saldo inicial",
+      );
+    legacy.historyImported = true;
+  }
   if (rawLegacy.resolution !== undefined) {
     const resolution = object(rawLegacy.resolution, "legacy.resolution");
     const accountId = string(
@@ -487,7 +510,10 @@ export function validateBackup(input: unknown): AppData {
     }
     legacy.resolution = { amount, date: resolvedDate, accountId, movementId };
   }
-  if ((legacy.status === "resolved") !== Boolean(legacy.resolution))
+  if (
+    !legacy.historyImported &&
+    (legacy.status === "resolved") !== Boolean(legacy.resolution)
+  )
     invalid("legacy.status", "não corresponde à resolução registrada");
   const preferences = object(root.preferences, "preferences");
   const lastBackupAt =

@@ -50,6 +50,8 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
+import { SavingsHistoryForm } from "./components/SavingsHistoryForm";
+import { getSavingsHistoryPlan } from "./domain/savings-history";
 import {
   DashboardPage,
   BudgetPage,
@@ -124,7 +126,8 @@ export default function App() {
       const result = await lock(async () => {
         const existing = await loadData();
         if (existing) return existing;
-        const seed = createInitialData();
+        const seed = getSavingsHistoryPlan(createInitialData()).next;
+        if (!seed) throw new Error("Não foi possível preparar os dados da planilha.");
         await saveData(seed);
         return seed;
       });
@@ -676,6 +679,26 @@ export default function App() {
                 },
               };
             }, "Saldo inicial confirmado. Os registros antigos foram preservados.")
+          }
+        />,
+      ),
+    importSavingsHistory: () =>
+      setModal(
+        <SavingsHistoryForm
+          data={data}
+          onClose={close}
+          onConfirm={() =>
+            commit((current) => {
+              const plan = getSavingsHistoryPlan(current);
+              if (plan.status !== "ready" || !plan.next)
+                throw new Error(
+                  plan.reason ??
+                    "O histórico já foi incluído ou os registros locais mudaram. Reabra a prévia antes de continuar.",
+                );
+              validateBackup(plan.next);
+              downloadBackup(current, "cash-tracker-antes-do-historico");
+              return plan.next;
+            }, "Histórico da planilha incluído. O backup anterior foi exportado.")
           }
         />,
       ),

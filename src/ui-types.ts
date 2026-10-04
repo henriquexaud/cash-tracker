@@ -26,6 +26,7 @@ export interface Actions {
   addAccount: () => void;
   removeAccount: (account: Account) => void;
   reviewLegacy: () => void;
+  importSavingsHistory: () => void;
   backup: () => void;
   restore: () => void;
   requestPersistence: () => void;
