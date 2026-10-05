@@ -302,6 +302,54 @@ describe("sincronização offline por conta", () => {
     expect(s.documents.get(second)).toBeUndefined();
     await expect(a.repo.clear?.()).rejects.toThrow(/aguardando/);
     expect(await a.repo.load()).toEqual(initial());
+    expect(a.repo.getStatus?.()).toBe("error");
+    expect(a.repo.hasPendingChanges?.()).toBe(true);
+    expect(a.repo.getSyncError?.()).toContain("Entre novamente");
+  });
+  it("diferencia atualização indisponível de envio pendente e limpa o erro após reconectar", async () => {
+    const s = server(), a = s.device("a");
+    await a.repo.load();
+    s.unavailable(true);
+    await a.repo.sync?.();
+    expect(a.repo.getStatus?.()).toBe("error");
+    expect(a.repo.hasPendingChanges?.()).toBe(false);
+    expect(a.repo.getSyncError?.()).toBe("Não foi possível atualizar sua conta. Tente sincronizar novamente.");
+    await a.repo.save(initial());
+    await a.repo.sync?.();
+    expect(a.repo.hasPendingChanges?.()).toBe(true);
+    expect(a.repo.getStatus?.()).toBe("error");
+    await a.repo.load();
+    expect(a.repo.getStatus?.()).toBe("error");
+    s.unavailable(false);
+    await a.repo.sync?.();
+    expect(a.repo.getSyncError?.()).toBeNull();
+    expect(a.repo.hasPendingChanges?.()).toBe(false);
+    expect(a.repo.getStatus?.()).toBe("synced");
+  });
+  it("não apresenta conteúdo arbitrário de uma exceção do provedor", async () => {
+    const s = server(), a = s.device("a");
+    await a.repo.load();
+    vi.mocked(s.client.auth.getSession).mockRejectedValueOnce(new Error("token=segredo@example.com"));
+    await a.repo.sync?.();
+    expect(a.repo.getSyncError?.()).toBe("Não foi possível atualizar sua conta. Tente novamente.");
+    expect(a.repo.hasPendingChanges?.()).toBe(false);
+  });
+  it("notifica uma pendência criada em outra aba sem apagar o erro nem repetir notificações", async () => {
+    const s = server(), a = s.device("a"), b = s.device("a");
+    await a.repo.load();
+    await b.repo.load();
+    s.unavailable(true);
+    await a.repo.sync?.();
+    b.offline();
+    await b.repo.save(initial());
+    const listener = vi.fn();
+    a.repo.subscribe?.(listener);
+    await a.repo.load();
+    expect(a.repo.getStatus?.()).toBe("error");
+    expect(a.repo.hasPendingChanges?.()).toBe(true);
+    expect(listener).toHaveBeenCalledOnce();
+    await a.repo.load();
+    expect(listener).toHaveBeenCalledOnce();
   });
   it("isola contas e projetos no armazenamento do mesmo navegador", async () => {
     const s = server(),

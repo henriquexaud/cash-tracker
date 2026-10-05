@@ -5,10 +5,23 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:local": "node scripts/local.mjs dev",
     "build": "tsc -b && vite build",
+    "build:local": "node scripts/local.mjs build",
     "preview": "vite preview --host 0.0.0.0",
+    "preview:local": "node scripts/local.mjs preview",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:domain": "vitest run src/domain/finance.test.ts",
+    "test:storage": "vitest run src/storage.test.ts src/storage.integration.test.ts",
+    "test:sync": "vitest run src/sync/sync.test.ts",
+    "test:auth": "vitest run src/auth",
+    "test:ui": "vitest run src/dashboard.test.tsx src/first-use.test.tsx src/ux.test.tsx src/privacy.test.tsx src/theme.test.ts src/refinements.test.tsx",
+    "test:pwa": "vitest run src/pwa.test.ts",
+    "test:harness": "node --test scripts/check-build.node-test.mjs",
+    "check:build": "node scripts/check-build.mjs",
+    "verify": "npm test && npm run test:harness && npm run build && npm run check:build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

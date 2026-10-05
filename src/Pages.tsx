@@ -47,6 +47,7 @@ import { usePrivacy } from "./privacy";
 import { Select } from "./components/Select";
 import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
+import { useHistoryYear } from "./components/useHistoryYear";
 import { DashboardActivity, DashboardPlanning } from "./components/DashboardDetails";
 import { ThemePicker } from "./components/ThemePicker";
 import { useInstalledApp } from "./components/InstallGuide";
@@ -102,19 +103,18 @@ function CategoryIcon({ name }: { name: string }) {
 }
 function BudgetRow({
   item,
-  index,
   onEdit,
   onRemove,
 }: {
   item: BudgetItem;
-  index: number;
   onEdit?: () => void;
   onRemove?: () => void;
 }) {
   const { money: formatMoney } = usePrivacy();
+  const color = Array.from(item.id).reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0, 0) % 4;
   return (
     <div className="budget-row">
-      <span className={`category-icon color-${index % 4}`}>
+      <span className={`category-icon color-${color}`}>
         <CategoryIcon name={item.name} />
       </span>
       <div className="budget-row-main">
@@ -314,7 +314,7 @@ export function DashboardPage({ data, month, actions }: PageProps) {
               </div>
               <p className="subtle">
                 {confirmed
-                  ? "Saldo inicial + aportes + rendimentos − retiradas."
+                  ? "Saldo de todo o histórico, incluindo lançamentos futuros."
                   : "Revise o saldo da planilha na tela Reserva."}
               </p>
               <button
@@ -367,7 +367,7 @@ export function BudgetPage({ data, month, actions }: PageProps) {
         <Metric
           label="Gastos aproximados"
           value={formatMoney(cost)}
-          detail={`${items.length} itens`}
+          detail={`${items.length} ${items.length === 1 ? "item" : "itens"}`}
         />
         <Metric
           label="Livre previsto"
@@ -427,11 +427,10 @@ export function BudgetPage({ data, month, actions }: PageProps) {
             </div>
           )}
           <div className="budget-list">
-            {filtered.map((item, index) => (
+            {filtered.map((item) => (
               <BudgetRow
                 key={item.id}
                 item={item}
-                index={index}
                 onEdit={() => actions.editBudgetItem(item)}
                 onRemove={() => actions.removeBudgetItem(item)}
               />
@@ -518,12 +517,9 @@ export function HistoryPage(props: PageProps) {
   const { data, month, actions } = props;
   const [tab, setTab] = useState<"salary" | "budget">("salary");
   const [range, setRange] = useState(0);
-  const [year, setYear] = useState(month.slice(0, 4));
+  const { year, setYear, years } = useHistoryYear(month, data.salaries.map(s => s.month));
   const stats = salaryStats(data.salaries);
   const series = salarySeries(data.salaries);
-  const years = [...new Set(data.salaries.map((s) => s.month.slice(0, 4)))]
-    .sort()
-    .reverse();
   const records = [...data.salaries].sort((a, b) =>
     b.month.localeCompare(a.month),
   );
@@ -586,7 +582,7 @@ export function HistoryPage(props: PageProps) {
           <p>
             {stats.first && monthLabel(stats.first.month, true)} —{" "}
             {stats.latest && monthLabel(stats.latest.month, true)} ·{" "}
-            {stats.count} meses
+            {stats.count} {stats.count === 1 ? "mês" : "meses"}
           </p>
         </div>
         <div className="history-growth">
@@ -624,7 +620,7 @@ export function HistoryPage(props: PageProps) {
           <ChartRange value={range} set={setRange} />
         </div>
         <Chart
-          points={range ? series.slice(-range) : series}
+          points={range ? series.filter(point => point.month >= shiftMonth(month, 1 - range) && point.month <= month) : series}
           title="Histórico dos recebimentos salariais"
           height={248}
         />
@@ -720,7 +716,7 @@ export function HistoryPage(props: PageProps) {
         </div>
         <div className="budget-list-total">
           <span>
-            {filtered.length} registros{" "}
+            {filtered.length} {filtered.length === 1 ? "registro" : "registros"}{" "}
             {year === "all" ? "no histórico" : `em ${year}`}
           </span>
           <strong>{formatMoney(annualTotal)}</strong>
@@ -791,6 +787,13 @@ export function WealthPage({ data, month, actions }: PageProps) {
     );
   return (
     <>
+      {pending && (
+        <div className="inline-notice">
+          <Info size={17} />
+          <span>O saldo da planilha ainda precisa ser conferido.</span>
+          <button className="text-button" onClick={actions.reviewLegacy}>Conferir saldo da planilha</button>
+        </div>
+      )}
       <section className="wealth-overview">
         <div>
           <span className="overline">Reserva confirmada</span>
@@ -800,8 +803,8 @@ export function WealthPage({ data, month, actions }: PageProps) {
           <p>
             {confirmed
               ? allocated > 0
-                ? `${formatMoney(allocated)} destinados a objetivos · ${formatMoney(stats.total - allocated)} disponíveis`
-                : "Saldo de todas as contas."
+                ? `${formatMoney(allocated)} destinados a objetivos · ${formatMoney(stats.total - allocated)} disponíveis. Saldo de todo o histórico, incluindo lançamentos futuros.`
+                : "Saldo de todo o histórico, incluindo lançamentos futuros."
               : "O saldo importado será incluído depois da revisão."}
           </p>
         </div>
@@ -999,7 +1002,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
           <span>Objetivos</span>
           <span className="optional-value">
             {data.goals.length
-              ? `${data.goals.length} cadastrados`
+              ? `${data.goals.length} ${data.goals.length === 1 ? "cadastrado" : "cadastrados"}`
               : "Opcional"}
           </span>
           <ChevronRight size={16} />
@@ -1048,7 +1051,8 @@ export function WealthPage({ data, month, actions }: PageProps) {
                     className="goal-progress"
                     role="progressbar"
                     aria-label={goal.name}
-                    aria-valuenow={goal.allocated}
+                    aria-valuenow={Math.min(goal.allocated, goal.target)}
+                    aria-valuetext={`${formatMoney(goal.allocated)} de ${formatMoney(goal.target)}${goal.allocated > goal.target ? ". Meta superada." : goal.allocated === goal.target ? ". Meta alcançada." : ""}`}
                     aria-valuemax={goal.target}
                     aria-valuemin={0}
                   >

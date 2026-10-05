@@ -14,6 +14,8 @@ export interface DataRepository {
   save: (data: AppData) => Promise<void>;
   sync?: () => Promise<void>;
   getStatus?: () => SyncStatus;
+  getSyncError?: () => string | null;
+  hasPendingChanges?: () => boolean;
   subscribe?: (listener: () => void) => () => void;
   clear?: () => Promise<void>;
   dispose?: () => void;

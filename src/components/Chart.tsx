@@ -158,7 +158,7 @@ export function Chart({
       }}
     >
       <span id={`summary-${id}`} style={hiddenText}>
-        {points.length} registros. Primeiro valor {formatMoney(points[0].value)}{" "}
+        {points.length} {points.length === 1 ? "registro" : "registros"}. Primeiro valor {formatMoney(points[0].value)}{" "}
         e último valor {formatMoney(points[points.length - 1].value)}.
       </span>
       <span id={`instructions-${id}`} style={hiddenText}>

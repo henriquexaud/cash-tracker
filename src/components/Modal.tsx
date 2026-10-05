@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { PrivacyContext, privacySettings } from "../privacy";
+import { useSaving } from "./Saving";
 
 // Dialogs reveal their own values without changing the page privacy preference.
 const modalPrivacy = privacySettings(false, () => {});
@@ -15,7 +16,7 @@ interface ModalProps {
 }
 
 const focusableSelector =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 export function Modal({
   title,
@@ -28,8 +29,10 @@ export function Modal({
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const pointerStartedOutside = useRef(false);
+  const edited = useRef(false);
+  const saving = useSaving();
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  closeRef.current = () => { if (!saving) onClose(); };
 
   useEffect(() => {
     const previousFocus =
@@ -123,9 +126,10 @@ export function Modal({
         onClick={(event) => {
           if (
             pointerStartedOutside.current &&
+            !edited.current &&
             event.target === event.currentTarget
           )
-            onClose();
+            closeRef.current();
           pointerStartedOutside.current = false;
         }}
       >
@@ -133,6 +137,8 @@ export function Modal({
           ref={dialogRef}
           className={`modal ${className}`.trim()}
           role="dialog"
+          aria-busy={saving}
+          onChangeCapture={() => { edited.current = true; }}
           aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={description ? descriptionId : undefined}
@@ -152,7 +158,8 @@ export function Modal({
               type="button"
               data-modal-close
               aria-label="Fechar janela"
-              onClick={onClose}
+              disabled={saving}
+              onClick={() => closeRef.current()}
             >
               <X size={20} aria-hidden="true" />
             </button>

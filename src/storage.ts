@@ -593,12 +593,12 @@ function validateFinancialIntegrity(
     );
     if (representative) {
       const error = validateMovement(data, representative, representative.id);
-      if (error) invalid(`movements.${account.id}`, error.replace(/\.$/, ""));
+      if (error) invalid("movements", error.replace(/\.$/, ""));
     }
   }
   for (const goal of data.goals) {
     const error = validateGoal(data, goal, goal.id);
-    if (error) invalid(`goals.${goal.id}`, error.replace(/\.$/, ""));
+    if (error) invalid("goals", error.replace(/\.$/, ""));
   }
 }
 

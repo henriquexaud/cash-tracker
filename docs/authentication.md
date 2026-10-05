@@ -7,7 +7,7 @@ O modo por conta usa Supabase Auth com e-mail e senha. Cada usuário possui um d
 1. Execute `supabase/schema.sql` no SQL Editor do seu projeto. O script cria apenas `financial_sync`, sua política de leitura e a função de mesclagem. Pode ser executado novamente.
 2. Configure as três variáveis de `.env.example` no ambiente de build: `VITE_STORAGE_MODE=cloud`, URL HTTPS do projeto e chave `sb_publishable_…`. Configure também as variáveis na hospedagem; `.env.local` não é enviado pelo Git.
 3. Em **Supabase → Authentication → URL Configuration**, defina **Site URL** com o domínio público do app e adicione esse domínio, incluindo a barra final, em **Redirect URLs**. Salve ambos. Adicione os endereços de desenvolvimento somente se usados; não deixe `http://localhost:3000` como Site URL de produção. A confirmação de cadastro e a recuperação usam esse endereço. Mantenha confirmação de e-mail habilitada para novos usuários e configure SMTP para enviar mensagens a usuários fora da organização/projeto. Modelos de e-mail devem usar `{{ .ConfirmationURL }}` para o link completo de confirmação.
-4. Faça o build, teste o login, publique e abra a versão publicada uma vez com internet em cada dispositivo. Aguarde Configurações indicar disponibilidade offline.
+4. Faça o build, teste o login e a PWA em ambiente de teste, publique e abra a versão publicada uma vez com internet em cada dispositivo. Confirme que o service worker instalou e controla a página; a interface atual de Configurações não mostra um indicador específico de cache offline pronto. Veja [verification.md](verification.md).
 
 O modo `cloud` sem configuração válida bloqueia o acesso. O modo padrão exige autenticação configurada. Para desenvolvimento local sem autenticação, use `VITE_STORAGE_MODE=local`: ele começa vazio e não inclui dados de nenhum usuário.
 
@@ -15,7 +15,7 @@ Após criar a conta, o app mostra a etapa de confirmação, com opção de reenv
 
 ## Levar os dados anteriores
 
-Exporte um backup antes de mudar de modo. Depois de entrar, restaure seu próprio arquivo em **Configurações → Restaurar backup**. A restauração exige confirmação e exporta uma cópia do estado atual. Não há importação automática em contas novas nem acesso pela interface ao armazenamento antigo sem conta.
+Exporte um backup antes de mudar de modo. Depois de entrar, restaure seu próprio arquivo em **Configurações → Restaurar backup**. A restauração exige confirmação e exporta uma cópia do estado atual. Não há importação automática em contas novas nem acesso pela interface ao armazenamento antigo sem conta. Se os dados cloud ainda não abriram nesse dispositivo, conecte-se e conclua a abertura antes de restaurar; a recuperação inicial por arquivo é oferecida apenas no modo local.
 
 O armazenamento antigo é preservado. O armazenamento por conta usa uma partição diferente, definida pela URL do projeto e pelo UUID da conta. Entrar em outra conta não carrega os dados da anterior. Backups são arquivos completos com os valores reais: o olho não altera o arquivo.
 
@@ -35,7 +35,7 @@ Só registros editados recebem nova revisão. A revisão contém o horário da e
 
 O servidor trava a linha da conta durante a mesclagem. Repetir um envio é idempotente. Uma edição feita durante o envio permanece pendente até ser confirmada por uma resposta posterior. O token fica fixado na conta de origem da chamada, evitando enviar um documento antigo para uma nova conta durante troca de sessão.
 
-Há tentativa de sincronização ao abrir, ao voltar à janela, ao reconectar, após salvar e a cada 15 segundos enquanto a janela está visível. Uma falha de rede mantém os dados locais e informa envio pendente. Não há fila financeira no service worker nem cache HTTP de respostas do Supabase.
+Há tentativa de sincronização ao abrir, ao voltar à janela, ao reconectar, após salvar e a cada 15 segundos enquanto a janela está visível. Uma falha de rede mantém os dados locais. O aviso informa envio pendente apenas quando existem edições aguardando confirmação; falha sem essas edições é apresentada como atualização indisponível. Falhas de sessão usam uma orientação segura para entrar novamente. Não há fila financeira no service worker nem cache HTTP de respostas do Supabase.
 
 Relógios muito incorretos em dispositivos que nunca se reconectaram podem alterar a ordem de duas edições offline independentes. Não existe garantia de ordem real entre dispositivos isolados sem uma referência de tempo; as revisões asseguram convergência e respeitam a ordem já observada. Mantenha data/hora automáticas nos dispositivos.
 
@@ -54,6 +54,8 @@ Duas retiradas offline diferentes podem, quando combinadas, exceder o saldo. O a
 
 Gráficos e barras de progresso são retirados da renderização quando ocultos, inclusive seus rótulos acessíveis. O botão de olho aparece apenas nas telas principais. Modais mostram os campos e informações para consulta e edição, sem alterar a preferência de ocultação da tela principal. A preferência é aplicada antes dos dados e persistida por dispositivo, separada da conta e do backup.
 
+Erros operacionais sem valores/nomes pessoais continuam visíveis com o olho fechado. Mensagens de integridade do backup não interpolam IDs do arquivo, e exceções arbitrárias do provedor são substituídas por mensagens seguras no aviso de sincronização.
+
 Login, cadastro e recuperação permitem mostrar ou ocultar a senha. Cadastro e definição de nova senha exigem confirmação correspondente antes de enviar ao Supabase. Os controles de visibilidade são independentes e voltam a ocultar ao trocar de formulário.
 
 ## Primeiro uso
@@ -63,7 +65,8 @@ Telas vazias orientam o primeiro registro e evitam gráficos sem dados ou refer�
 ## Verificações
 
 - `npm test`: domínio, persistência, modo offline, reabertura, contas/projetos separados, duas edições concorrentes, exclusões, envio em andamento, falhas de sessão, tela de login e privacidade.
-- `npm run build`: TypeScript e build de produção.
+- `npm run build`: TypeScript e build de produção; `npm run check:build` confere os arquivos e o precache gerados.
+- `npm run verify`: testes do app/harness, TypeScript/build e inspeção do precache. Não executa os checks SQL ou de navegador real.
 - `supabase/security.test.sql`: isolamento entre dois usuários, negação de acesso anônimo, negação de escrita direta e mesclagem sem sobrescrita por revisões antigas. Execute após o esquema; fixtures são desfeitas com `ROLLBACK`.
 - Uma publicação antiga com dados pessoais em assets/cache precisa continuar protegida; o build novo não torna privados assets publicados anteriormente. A produção atual usa Standard Protection na Vercel: domínio principal público, endereços históricos e de prévia protegidos. Autenticação e autorização dos dados do aplicativo ficam no Supabase.
 

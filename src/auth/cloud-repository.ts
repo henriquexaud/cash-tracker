@@ -21,6 +21,8 @@ interface Options {
   online?: () => boolean;
   device?: string;
 }
+// Only our fixed operational messages may be displayed; provider errors can contain private details.
+class SyncFailure extends Error {}
 export function createCloudRepository(
   client: SupabaseClient,
   ownerId: string,
@@ -35,6 +37,8 @@ export function createCloudRepository(
   let status: SyncStatus = "pending",
     active = true;
   let baseline: AppData | null = null;
+  let syncError: string | null = null;
+  let pendingChanges = false;
   let inFlight: Promise<void> | null = null;
   const emit = (next: SyncStatus, changed = false) => {
     if (next === status && !changed) return;
@@ -51,8 +55,8 @@ export function createCloudRepository(
     assertActive();
     const session = await client.auth.getSession();
     if (session.data.session?.user.id !== ownerId)
-      throw new Error(
-        "Entre novamente para sincronizar. As edições offline estão preservadas.",
+      throw new SyncFailure(
+        "Entre novamente para sincronizar esta conta.",
       );
     const { data, error } = await client
       .rpc("sync_financial_data", { incoming: document })
@@ -62,12 +66,12 @@ export function createCloudRepository(
       );
     assertActive();
     if (error || !data)
-      throw new Error(
-        "Não foi possível sincronizar. Suas alterações continuam salvas neste dispositivo.",
+      throw new SyncFailure(
+        "Não foi possível atualizar sua conta. Tente sincronizar novamente.",
       );
     const serverNow = Date.parse(data.server_time);
     if (!Number.isFinite(serverNow))
-      throw new Error("O servidor retornou uma data inválida.");
+      throw new SyncFailure("O servidor retornou uma data inválida. Tente sincronizar novamente.");
     return {
       document: validateDocument(data.document),
       offset: serverNow - now(),
@@ -81,9 +85,11 @@ export function createCloudRepository(
       return Promise.resolve();
     }
     inFlight = (async () => {
+      syncError = null;
       emit("syncing");
       try {
         const before = await cache.read();
+        pendingChanges = before?.pending ?? false;
         const remote = await requestSync(
           before?.pending ? before.document : emptyDocument(),
         );
@@ -101,6 +107,7 @@ export function createCloudRepository(
           );
           return { document, pending, clockOffset: remote.offset };
         });
+        pendingChanges = merged.pending;
         emit(
           needsReview(materialize(merged.document))
             ? "review"
@@ -109,8 +116,9 @@ export function createCloudRepository(
               : "synced",
           true,
         );
-      } catch {
-        if (active) emit(online() ? "error" : "offline");
+      } catch (error) {
+        syncError = error instanceof SyncFailure ? error.message : "Não foi possível atualizar sua conta. Tente novamente.";
+        if (active) emit(online() ? "error" : "offline", true);
       } finally {
         inFlight = null;
       }
@@ -121,6 +129,8 @@ export function createCloudRepository(
     mode: "cloud",
     sync,
     getStatus: () => status,
+    getSyncError: () => syncError,
+    hasPendingChanges: () => pendingChanges,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {
@@ -139,10 +149,14 @@ export function createCloudRepository(
           "Abra esta conta com internet uma vez para preparar os dados offline. Confira também a configuração do Supabase.",
         );
       validateDocument(stored.document);
+      const pendingChanged = pendingChanges !== stored.pending;
+      pendingChanges = stored.pending;
       baseline = materialize(stored.document);
-      if (needsReview(baseline)) emit("review");
-      else if (!online()) emit("offline");
-      else if (stored.pending && status !== "syncing") emit("pending");
+      if (needsReview(baseline)) emit("review", pendingChanged);
+      else if (!online()) emit("offline", pendingChanged);
+      else if (status !== "syncing" && status !== "error")
+        emit(stored.pending ? "pending" : "synced", pendingChanged);
+      else if (pendingChanged) emit(status, true);
       return structuredClone(baseline);
     },
     save: async (input) => {
@@ -168,6 +182,7 @@ export function createCloudRepository(
         return { ...current, document, pending: true };
       });
       baseline = materialize(saved.document);
+      pendingChanges = saved.pending;
       emit(online() ? "pending" : "offline");
       // The UI's commit completes after durable local storage, never after a network wait.
       void sync();

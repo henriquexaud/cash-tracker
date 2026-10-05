@@ -1,6 +1,6 @@
 import { Select } from "./Select";
 import { usePrivacy } from "../privacy";
-import { useState } from "react";
+import { useHistoryYear } from "./useHistoryYear";
 import { ArrowRight, CalendarDays } from "lucide-react";
 import {
   budgetSeries,
@@ -18,16 +18,8 @@ export function BudgetHistory({
   actions,
 }: Pick<PageProps, "data" | "month" | "setMonth" | "actions">) {
   const { money: formatMoney } = usePrivacy();
-  const [year, setYear] = useState(month.slice(0, 4));
+  const { year, setYear, years } = useHistoryYear(month, data.budgets.map(budget => budget.month));
   const stats = budgetStats(data.budgets);
-  const years = Array.from(
-    new Set([
-      month.slice(0, 4),
-      ...data.budgets.map((budget) => budget.month.slice(0, 4)),
-    ]),
-  )
-    .sort()
-    .reverse();
   const filtered = [...data.budgets]
     .filter((budget) => year === "all" || budget.month.startsWith(`${year}-`))
     .sort((a, b) => b.month.localeCompare(a.month));

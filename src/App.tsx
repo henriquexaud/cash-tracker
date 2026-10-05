@@ -32,7 +32,7 @@ import {
 import { createEmptyData } from "./domain/empty";
 import { APP_VERSION } from "./config";
 import { needsReview, validateSynchronizedEdit } from "./sync/document";
-import { PrivacyToggle, SensitiveText, usePrivacy } from "./privacy";
+import { PrivacyToggle, SensitiveText } from "./privacy";
 import {
   localRepository,
   type DataRepository,
@@ -61,6 +61,7 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
+import { DialogActions, SavingContext } from "./components/Saving";
 import { InstallGuide } from "./components/InstallGuide";
 import {
   DashboardPage,
@@ -91,6 +92,13 @@ interface InstallPrompt extends Event {
   userChoice: Promise<{ outcome: string }>;
 }
 
+interface MutationOptions {
+  beforeSave?: (current: AppData, next: AppData) => void;
+  errorMessage?: (cause: string) => string;
+}
+const countLabel = (count: number, singular: string, plural: string) =>
+  `${count} ${count === 1 ? singular : plural}`;
+
 function downloadBackup(data: AppData, prefix = "cash-tracker") {
   const blob = new Blob([exportBackup(data)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -111,10 +119,16 @@ export default function App({
   account?: AuthAccount;
 }) {
   const { load: loadData, save: saveData } = repository;
-  const privacy = usePrivacy();
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
-    repository.getStatus?.() ?? "local",
-  );
+  const readSyncState = () => {
+    const status: SyncStatus = repository.getStatus?.() ?? "local";
+    return {
+      status,
+      error: repository.getSyncError?.(),
+      pending: repository.hasPendingChanges?.() ?? status === "pending",
+    };
+  };
+  const [syncState, setSyncState] = useState(readSyncState);
+  const syncStatus = syncState.status;
   const theme = useTheme();
   const [data, setData] = useState<AppData | null>(null);
   const reviewRequired = useMemo(
@@ -172,7 +186,7 @@ export default function App({
   useEffect(() => {
     const onHash = () => {
       setPage(readPage());
-      setModal(null);
+      if (!savingRef.current) setModal(null);
       window.scrollTo({ top: 0 });
     };
     const onOnline = () => {
@@ -206,7 +220,7 @@ export default function App({
       channel.current.onmessage = () => void refresh();
     }
     const unsubscribe = repository.subscribe?.(() => {
-      setSyncStatus(repository.getStatus?.() ?? "local");
+      setSyncState(readSyncState());
       if (!savingRef.current && repository.getStatus?.() !== "syncing")
         void refresh();
     });
@@ -253,13 +267,22 @@ export default function App({
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const mutate = async (
-    transform: (current: AppData) => AppData,
-    message: string,
-  ) => {
+  const withSaving = async <T,>(task: () => Promise<T>): Promise<T | false> => {
     if (savingRef.current) return false;
     savingRef.current = true;
     setSaving(true);
+    try {
+      return await task();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+  const mutate = async (
+    transform: (current: AppData) => AppData,
+    message: string,
+    options: MutationOptions = {},
+  ) => withSaving(async () => {
     try {
       const next = await lock(async () => {
         const current = await loadData();
@@ -271,35 +294,36 @@ export default function App({
         if (repository.mode === "cloud")
           validateSynchronizedEdit(current, candidate);
         else validateBackup(candidate);
+        options.beforeSave?.(current, candidate);
         await saveData(candidate);
-        return repository.mode === "cloud"
-          ? ((await loadData()) ?? candidate)
-          : candidate;
+        if (repository.mode === "cloud") {
+          try { return (await loadData()) ?? candidate; }
+          catch { /* The durable save succeeded; a refresh failure must not report a failed edit. */ }
+        }
+        return candidate;
       });
       setData(next);
       channel.current?.postMessage("saved");
       setNotice({ text: message });
       return next;
     } catch (error) {
+      const cause = error instanceof Error
+        ? error.message
+        : "Não foi possível salvar. Seus dados anteriores foram preservados.";
       setNotice({
-        text:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível salvar. Seus dados anteriores foram preservados.",
+        text: options.errorMessage?.(cause) ?? cause,
         error: true,
       });
       return false;
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
     }
-  };
-  const close = () => setModal(null);
+  });
+  const close = () => { if (!savingRef.current) setModal(null); };
   const commit = async (
     transform: (current: AppData) => AppData,
     message: string,
+    options?: MutationOptions,
   ) => {
-    if (await mutate(transform, message)) close();
+    if (await mutate(transform, message, options)) close();
   };
   const navigate = (target: Page) => {
     location.hash = target;
@@ -323,17 +347,7 @@ export default function App({
             description
           )}
         </p>
-        <div className="modal-footer">
-          <button className="button secondary" onClick={close}>
-            Cancelar
-          </button>
-          <button
-            className={`button ${destructive ? "danger" : "primary"}`}
-            onClick={onConfirm}
-          >
-            {label}
-          </button>
-        </div>
+        <DialogActions onClose={close} onConfirm={onConfirm} label={label} destructive={destructive} busyLabel={label === "Sair" ? "Saindo…" : "Salvando…"} />
       </Modal>,
     );
   };
@@ -353,6 +367,7 @@ export default function App({
 
   if (!data)
     return (
+      <SavingContext.Provider value={saving}>
       <div className="loading-screen">
         <div className="brand-mark">
           <TrendingUp size={23} />
@@ -364,20 +379,23 @@ export default function App({
             <div className="settings-actions">
               <button
                 className="button primary"
+                disabled={saving}
                 onClick={() => void initialize()}
               >
                 Tentar novamente
               </button>
-              <button
+              {repository.mode === "local" && <button
                 className="button secondary"
+                disabled={saving}
                 onClick={() => recoveryInput.current?.click()}
               >
                 Restaurar um backup
-              </button>
+              </button>}
             </div>
             <p className="muted">
-              Use uma janela normal do navegador e permita o armazenamento
-              local.
+              {repository.mode === "cloud"
+                ? "Conecte-se e tente novamente. Depois que a conta abrir, você poderá restaurar o backup em Configurações."
+                : "Use uma janela normal do navegador e permita o armazenamento local."}
             </p>
             <input
               hidden
@@ -397,53 +415,38 @@ export default function App({
                   setModal(
                     <Modal title="Recuperar seus dados?" onClose={close}>
                       <p className="modal-description">
-                        Este backup contém {restored.salaries.length} salários e{" "}
-                        {restored.movements.length} movimentações. Ele
+                        Este backup contém {countLabel(restored.salaries.length, "salário", "salários")} e{" "}
+                        {countLabel(restored.movements.length, "movimentação", "movimentações")}. Ele
                         substituirá os dados locais que não puderam ser abertos.
                       </p>
-                      <div className="modal-footer">
-                        <button className="button secondary" onClick={close}>
-                          Cancelar
-                        </button>
-                        <button
-                          className="button primary"
-                          onClick={() =>
-                            void (async () => {
+                      <DialogActions onClose={close} label="Restaurar e recuperar"
+                        onConfirm={() => void withSaving(async () => {
+                          try {
+                            await lock(async () => {
+                              let existing: AppData | null = null;
                               try {
-                                await lock(async () => {
-                                  try {
-                                    const existing = await loadData();
-                                    if (existing)
-                                      downloadBackup(
-                                        existing,
-                                        "cash-tracker-antes-da-recuperacao",
-                                      );
-                                  } catch {
-                                    /* Explicit recovery of an unreadable state; never initialize a seed here. */
-                                  }
-                                  await saveData(restored);
-                                });
-                                setData(restored);
-                                setLoadError("");
-                                close();
-                                channel.current?.postMessage("saved");
-                                setNotice({
-                                  text: "Backup restaurado. Seus dados foram recuperados.",
-                                });
-                              } catch (error) {
-                                close();
-                                setLoadError(
-                                  error instanceof Error
-                                    ? error.message
-                                    : "Não foi possível recuperar os dados.",
-                                );
+                                existing = await loadData();
+                              } catch {
+                                /* Explicit recovery of an unreadable state; never initialize a seed here. */
                               }
-                            })()
+                              if (existing)
+                                downloadBackup(existing, "cash-tracker-antes-da-recuperacao");
+                              await saveData(restored);
+                            });
+                            setData(restored);
+                            setLoadError("");
+                            channel.current?.postMessage("saved");
+                            setNotice({
+                              text: "Backup restaurado. Seus dados foram recuperados.",
+                            });
+                          } catch (error) {
+                            setLoadError(
+                              error instanceof Error
+                                ? error.message
+                                : "Não foi possível recuperar os dados.",
+                            );
                           }
-                        >
-                          Restaurar e recuperar
-                        </button>
-                      </div>
+                        }).then(close)} />
                     </Modal>,
                   );
                 } catch (error) {
@@ -464,6 +467,7 @@ export default function App({
         )}
         {modal}
       </div>
+      </SavingContext.Provider>
     );
 
   const openMovement = (
@@ -511,6 +515,38 @@ export default function App({
     );
   };
 
+  const openLegacy = (legacyData: AppData) =>
+    setModal(
+      <LegacyForm
+        data={legacyData}
+        onClose={close}
+        onSave={(movement) =>
+          void commit((current) => {
+            if (current.legacy.status !== "pending")
+              throw new Error(
+                "O saldo da planilha já foi confirmado. Edite o saldo inicial na reserva.",
+              );
+            const error = validateMovement(current, movement);
+            if (error) throw new Error(error);
+            return {
+              ...current,
+              movements: [...current.movements, movement],
+              legacy: {
+                ...current.legacy,
+                status: "resolved",
+                resolution: {
+                  amount: movement.amount,
+                  date: movement.date,
+                  accountId: movement.accountId,
+                  movementId: movement.id,
+                },
+              },
+            };
+          }, "Saldo inicial confirmado. Os registros antigos foram preservados.")
+        }
+      />,
+    );
+
   const actions: Actions = {
     navigate,
     editSalary: (salary, target = salary?.month ?? month) =>
@@ -556,6 +592,11 @@ export default function App({
             void commit(
               (current) => {
                 const budget = getBudget(current);
+                if (item && (
+                  !budget.items.some(row => row.id === item.id) ||
+                  (data.budgets.some(row => row.month === month) && !current.budgets.some(row => row.month === month))
+                ))
+                  throw new Error("Esse gasto foi excluído ou substituído em outra aba ou dispositivo. Confira o orçamento antes de continuar.");
                 return replaceBudget(current, {
                   ...budget,
                   items: item
@@ -751,44 +792,25 @@ export default function App({
         true,
         true,
       ),
-    reviewLegacy: () =>
-      setModal(
-        <LegacyForm
-          data={data}
+    reviewLegacy: () => {
+      if (!data.accounts.length) {
+        setModal(<AccountForm
+          description="Dê um nome ao local da reserva. Depois, confira o saldo da planilha."
           onClose={close}
-          onSave={(movement) =>
-            void commit((current) => {
-              if (current.legacy.status !== "pending")
-                throw new Error(
-                  "O saldo da planilha já foi confirmado. Edite o saldo inicial na reserva.",
-                );
-              const error = validateMovement(current, movement);
-              if (error) throw new Error(error);
-              return {
-                ...current,
-                movements: [...current.movements, movement],
-                legacy: {
-                  ...current.legacy,
-                  status: "resolved",
-                  resolution: {
-                    amount: movement.amount,
-                    date: movement.date,
-                    accountId: movement.accountId,
-                    movementId: movement.id,
-                  },
-                },
-              };
-            }, "Saldo inicial confirmado. Os registros antigos foram preservados.")
-          }
-        />,
-      ),
+          onSave={newAccount => void (async () => {
+            const next = await mutate(current => ({ ...current, accounts: [...current.accounts, newAccount] }), "Local de reserva adicionado.");
+            if (next) openLegacy(next);
+          })()}
+        />);
+      } else openLegacy(data);
+    },
     signOut: () => {
       if (account)
         confirm(
           "Sair desta conta?",
           "Seus registros continuarão na sua conta. Para usar o app novamente neste dispositivo, entre com internet.",
           () =>
-            void account.signOut().catch((error) =>
+            void withSaving(() => account.signOut()).catch((error) =>
               setNotice({
                 text:
                   error instanceof Error
@@ -804,18 +826,15 @@ export default function App({
     backup: () =>
       void (async () => {
         const at = new Date().toISOString();
-        const succeeded = await mutate((current) => {
-          const next = {
+        let downloadStarted = false;
+        await mutate((current) => ({
             ...current,
             preferences: { ...current.preferences, lastBackupAt: at },
-          };
-          downloadBackup(next);
-          return next;
-        }, "Backup completo exportado.");
-        if (!succeeded)
-          setNotice({
-            text: "Não foi possível concluir a exportação. Tente novamente.",
-            error: true,
+          }), "Download do backup iniciado. Confira seus downloads.", {
+            beforeSave: (_current, next) => { downloadBackup(next); downloadStarted = true; },
+            errorMessage: cause => downloadStarted
+              ? `O download do backup foi iniciado, mas a data da exportação não pôde ser atualizada. ${cause}`
+              : `Não foi possível iniciar o download do backup. ${cause}`,
           });
       })(),
     restore: () => restoreInput.current?.click(),
@@ -876,6 +895,7 @@ export default function App({
   };
 
   return (
+    <SavingContext.Provider value={saving}>
     <div className="app-shell" aria-busy={saving}>
       <aside className="sidebar">
         <a
@@ -1045,8 +1065,9 @@ export default function App({
             repository.mode === "cloud" && (
               <div className="inline-notice">
                 <span>
-                  Alterações salvas neste dispositivo. O envio será tentado
-                  novamente com conexão.
+                  {syncStatus === "pending"
+                    ? "Alterações salvas neste dispositivo. Aguardando envio à conta."
+                    : `${syncState.pending ? "Alterações salvas neste dispositivo. " : ""}${syncState.error ?? "Não foi possível atualizar sua conta. Tente novamente."}`}
                 </span>
                 <button
                   className="text-button"
@@ -1067,9 +1088,7 @@ export default function App({
         >
           {notice.error ? <CircleHelp size={18} /> : <Check size={18} />}
           <span>
-            {notice.error && privacy.hidden
-              ? "Não foi possível concluir. Mostre os valores para conferir o aviso."
-              : notice.text}
+            {notice.text}
           </span>
           <button aria-label="Fechar aviso" onClick={() => setNotice(null)}>
             <X size={16} />
@@ -1100,9 +1119,9 @@ export default function App({
               >
                 <p className="modal-description">
                   O arquivo contém{" "}
-                  <strong>{restored.salaries.length} salários</strong>,{" "}
-                  <strong>{restored.budgets.length} orçamentos</strong> e{" "}
-                  <strong>{restored.movements.length} movimentações</strong>.
+                  <strong>{countLabel(restored.salaries.length, "salário", "salários")}</strong>,{" "}
+                  <strong>{countLabel(restored.budgets.length, "orçamento", "orçamentos")}</strong> e{" "}
+                  <strong>{countLabel(restored.movements.length, "movimentação", "movimentações")}</strong>.
                   Total recebido:{" "}
                   <strong>
                     <SensitiveText>{formatMoney(stats.total)}</SensitiveText>
@@ -1114,25 +1133,11 @@ export default function App({
                   dispositivo. Uma cópia dos dados atuais será exportada antes
                   da substituição.
                 </div>
-                <div className="modal-footer">
-                  <button className="button secondary" onClick={close}>
-                    Cancelar
-                  </button>
-                  <button
-                    className="button primary"
-                    onClick={() =>
-                      void commit((current) => {
-                        downloadBackup(
-                          current,
-                          "cash-tracker-antes-da-restauracao",
-                        );
-                        return restored;
-                      }, "Backup restaurado com sucesso.")
-                    }
-                  >
-                    Salvar cópia e restaurar
-                  </button>
-                </div>
+                <DialogActions onClose={close} label="Salvar cópia e restaurar"
+                  onConfirm={() => void commit(() => restored, "Backup restaurado com sucesso.", {
+                    beforeSave: current => downloadBackup(current, "cash-tracker-antes-da-restauracao"),
+                  })}
+                />
               </Modal>,
             );
           } catch (error) {
@@ -1152,5 +1157,6 @@ export default function App({
         </div>
       )}
     </div>
+    </SavingContext.Provider>
   );
 }

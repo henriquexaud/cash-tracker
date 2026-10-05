@@ -15,22 +15,22 @@ Toda instalação e conta nova começa vazia. O código não contém salários, 
 
 ## Desenvolvimento
 
-Requer Node.js 22 ou superior.
+Use Node.js 22.22.2+ na linha 22, 24.15.0+ na linha 24 ou 26+, conforme as dependências do lockfile. `.nvmrc` fixa a referência 22.22.2.
 
 ```sh
 npm ci
-cp .env.example .env.local
-npm run dev
+npm run dev:local
 ```
 
-Configure `.env.local` com a URL e a chave publicável do seu projeto Supabase. Senhas, chaves secretas e backups pessoais não devem entrar no repositório.
+Abra `http://127.0.0.1:5174`. Esse ambiente usa dados locais, começa vazio e dispensa Supabase. O script força o modo local sem editar `.env.local`. Para conferir a PWA, use `npm run preview:local`, que recompila `dist/` em modo local antes de servir o preview em `http://127.0.0.1:4174`.
 
-Para desenvolvimento sem autenticação, use `VITE_STORAGE_MODE=local`. Esse modo começa vazio e grava apenas neste navegador; não sincroniza contas. A publicação para usuários deve usar `cloud`, que é o padrão.
+Para desenvolver com autenticação, copie `.env.example` para `.env.local` se ainda não existir, configure um projeto Supabase de teste e use `npm run dev`. Senhas, chaves secretas e backups pessoais não devem entrar no repositório. A publicação para usuários deve usar `cloud`, que é o padrão.
 
 ```sh
-npm test
-npm run build
+npm run verify
 ```
+
+O harness executa testes do app e dos scripts, TypeScript/build e uma checagem do precache gerado. Também há comandos por suíte e `npm run typecheck`. Consulte [desenvolvimento](docs/development.md) e [verificação](docs/verification.md) para os checks manuais e seus limites.
 
 ## Publicação
 
@@ -46,7 +46,7 @@ Conecte o repositório GitHub ao projeto da Vercel para publicar os próximos co
 
 Em uma instalação nova, execute `supabase/schema.sql` no SQL Editor e configure as URLs de autenticação. Para o projeto já configurado, uma atualização do app não exige recriar tabelas ou importar dados.
 
-O domínio principal pode ser público: a autorização dos dados fica no Supabase. Mantenha as publicações antigas e as prévias protegidas. Consulte [contas e sincronização](docs/authentication.md) para configuração, funcionamento offline e limites.
+O domínio principal pode ser público: a autorização dos dados fica no Supabase. Mantenha as publicações antigas e as prévias protegidas. **Não publique o `dist/` de `build:local` ou `preview:local`; gere novamente com as variáveis cloud corretas.** Consulte [publicação](docs/deployment.md) e [contas e sincronização](docs/authentication.md) para configuração, funcionamento offline e limites.
 
 ## Estrutura
 
@@ -56,3 +56,9 @@ O domínio principal pode ser público: a autorização dos dados fica no Supaba
 - `src/components`: formulários e controles compartilhados.
 - `src/test`: exemplos fictícios usados exclusivamente pelos testes.
 - `supabase`: esquema e verificações de isolamento.
+- `scripts`: ambiente local e inspeção/testes do build offline.
+- `docs`: arquitetura, desenvolvimento, verificação, publicação e revisões.
+
+## Documentação e manutenção
+
+Comece pelo [índice da documentação](docs/README.md). O [AGENTS.md](AGENTS.md) orienta mudanças pequenas, preservação da simplicidade e validação de dados. A [revisão de 05/10/2026](docs/review-2026-10-05.md) registra os 12 achados e as correções verificadas.

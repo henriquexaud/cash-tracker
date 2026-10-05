@@ -1,5 +1,8 @@
 import { Select } from "./Select";
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import {
+  cloneElement, createContext, isValidElement, useContext, useId, useState,
+  type FormEvent, type ReactElement, type ReactNode,
+} from "react";
 import {
   formatMoney,
   parseMoney,
@@ -19,6 +22,7 @@ import type {
   Salary,
 } from "../domain/types";
 import { Modal } from "./Modal";
+import { useSaving } from "./Saving";
 
 const moneyText = (value: number) => formatMoney(value).replace(/R\$\s*/, "");
 const parsedAmount = (value: string) => {
@@ -36,17 +40,43 @@ const movementLabels: Record<MovementKind, string> = {
   opening: "Saldo inicial",
 };
 
+interface ValidationError {
+  message: string;
+  fieldId?: string;
+}
+const ValidationContext = createContext<{ error: ValidationError | null; errorId: string } | null>(null);
+
 function useFormError(id: string) {
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ValidationError | null>(null);
   const showError = (message: string, field?: string) => {
-    setError(message);
+    setError({ message, fieldId: field ? `${id}-${field}` : undefined });
     requestAnimationFrame(() => {
       const target = document.getElementById(`${id}-${field ?? "error"}`);
       target?.closest("details")?.setAttribute("open", "");
       target?.focus();
     });
   };
-  return [error, showError] as const;
+  const clearError = (fieldId: string) => {
+    setError(current => !current?.fieldId || current.fieldId === fieldId ? null : current);
+  };
+  return [error, showError, clearError] as const;
+}
+
+function EntryForm({ children, id, error, clearError, onSubmit }: {
+  children: ReactNode;
+  id: string;
+  error: ValidationError | null;
+  clearError: (fieldId: string) => void;
+  onSubmit: (event: FormEvent) => void;
+}) {
+  const saving = useSaving();
+  return (
+    <ValidationContext.Provider value={{ error, errorId: `${id}-error` }}>
+      <form onSubmit={onSubmit} noValidate onChange={event => clearError((event.target as HTMLElement).id)}>
+        <fieldset className="form-fields" disabled={saving}>{children}</fieldset>
+      </form>
+    </ValidationContext.Provider>
+  );
 }
 
 function FormActions({
@@ -58,26 +88,27 @@ function FormActions({
   label?: string;
   disabled?: boolean;
 }) {
+  const saving = useSaving();
   return (
     <div className="modal-footer">
-      <button type="button" className="button secondary" onClick={onClose}>
+      <button type="button" className="button secondary" disabled={saving} onClick={onClose}>
         Cancelar
       </button>
       <button
         type="submit"
         className="button primary"
-        disabled={disabled}
+        disabled={disabled || saving}
       >
-        {label}
+        {saving ? "Salvando…" : label}
       </button>
     </div>
   );
 }
 
-function FormError({ error, id }: { error: string | null; id: string }) {
+function FormError({ error, id }: { error: ValidationError | null; id: string }) {
   return error ? (
     <p className="form-error" role="alert" id={id} tabIndex={-1}>
-      {error}
+      {error.message}
     </p>
   ) : null;
 }
@@ -93,10 +124,19 @@ function Field({
   hint?: string;
   id: string;
 }) {
+  const validation = useContext(ValidationContext);
+  const invalid = validation?.error?.fieldId === id;
+  const describedBy = [hint ? `${id}-hint` : null, invalid ? validation?.errorId : null].filter(Boolean).join(" ") || undefined;
+  const input = isValidElement(children)
+    ? cloneElement(children as ReactElement<{ "aria-invalid"?: boolean; "aria-describedby"?: string }>, {
+        "aria-invalid": invalid || undefined,
+        "aria-describedby": describedBy,
+      })
+    : children;
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      {children}
+      {input}
       {hint && (
         <p id={`${id}-hint`} className="form-hint">
           {hint}
@@ -177,7 +217,7 @@ export function SalaryForm({
     const value = salary?.amount ?? initialAmount;
     return value === undefined ? "" : moneyText(value);
   });
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   const monthLabel = /^\d{4}-\d{2}$/.test(month)
     ? new Intl.DateTimeFormat("pt-BR", {
         month: "long",
@@ -202,7 +242,7 @@ export function SalaryForm({
       description={monthLabel}
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <MoneyField
             id={`${id}-amount`}
@@ -216,7 +256,7 @@ export function SalaryForm({
         </div>
         <FormError error={error} id={`${id}-error`} />
         <FormActions onClose={onClose} label="Salvar salário" />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -238,7 +278,7 @@ export function BudgetItemForm({
   );
   const [amount, setAmount] = useState(item ? moneyText(item.unitAmount) : "");
   const [factor, setFactor] = useState(String(item?.factor ?? 1));
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   const unitAmount = parsedAmount(amount);
   const numericFactor = /^\d+$/.test(factor.trim()) ? Number(factor) : NaN;
   const monthlyAmount =
@@ -285,7 +325,7 @@ export function BudgetItemForm({
       description="Informe uma estimativa do que costuma gastar."
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <Field label="Nome do gasto" id={`${id}-name`}>
             <input
@@ -386,7 +426,7 @@ export function BudgetItemForm({
         </div>
         <FormError error={error} id={`${id}-error`} />
         <FormActions onClose={onClose} label="Salvar gasto" />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -402,7 +442,7 @@ export function ReservePlanForm({
 }) {
   const id = useId();
   const [amount, setAmount] = useState(moneyText(value));
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   function submit(event: FormEvent) {
     event.preventDefault();
     const next = parsedAmount(amount);
@@ -417,7 +457,7 @@ export function ReservePlanForm({
       description="Este valor entra no cálculo do dinheiro livre previsto do mês."
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <MoneyField
             id={`${id}-amount`}
@@ -431,7 +471,7 @@ export function ReservePlanForm({
         </div>
         <FormError error={error} id={`${id}-error`} />
         <FormActions onClose={onClose} label="Salvar planejamento" />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -471,7 +511,7 @@ export function MovementForm({
   );
   const [amountEdited, setAmountEdited] = useState(false);
   const [note, setNote] = useState(movement?.note ?? "");
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   const isLegacyOpening = Boolean(
     movement && movement.id === data.legacy.resolution?.movementId,
   );
@@ -519,7 +559,7 @@ export function MovementForm({
       }
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <MoneyField
             id={`${id}-amount`}
@@ -632,7 +672,7 @@ export function MovementForm({
           label={`Salvar ${movementLabels[kind].toLowerCase()}`}
           disabled={!data.accounts.length}
         />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -655,7 +695,7 @@ export function GoalForm({
   );
   const [target, setTarget] = useState(goal ? moneyText(goal.target) : "");
   const [allocated, setAllocated] = useState(moneyText(goal?.allocated ?? 0));
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   const balance = data.movements
     .filter((movement) => movement.accountId === accountId)
     .reduce(
@@ -698,7 +738,7 @@ export function GoalForm({
       description="Destine parte do saldo de uma conta a um objetivo. O dinheiro continua na mesma conta."
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <Field label="Nome do objetivo" id={`${id}-name`}>
             <input
@@ -766,7 +806,7 @@ export function GoalForm({
           label="Salvar objetivo"
           disabled={!data.accounts.length}
         />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -782,7 +822,7 @@ export function AccountForm({
 }) {
   const id = useId();
   const [name, setName] = useState("");
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return setError("Informe o nome do local.", "name");
@@ -795,7 +835,7 @@ export function AccountForm({
       description={description}
       onClose={onClose}
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="form-grid">
           <Field label="Nome do local" id={`${id}-name`}>
             <input
@@ -817,7 +857,7 @@ export function AccountForm({
         </div>
         <FormError error={error} id={`${id}-error`} />
         <FormActions onClose={onClose} label="Salvar local" />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
@@ -835,7 +875,7 @@ export function LegacyForm({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today());
   const [accountId, setAccountId] = useState(data.accounts[0]?.id ?? "");
-  const [error, setError] = useFormError(id);
+  const [error, setError, clearError] = useFormError(id);
   const accountHasMovements = data.movements.some(
     (movement) => movement.accountId === accountId,
   );
@@ -869,11 +909,11 @@ export function LegacyForm({
       onClose={onClose}
       className="modal-wide"
     >
-      <form onSubmit={submit} noValidate>
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
         <div className="legacy-review">
           <p className="form-hint">
             As movimentações não têm datas identificadas e os possíveis
-            rendimentos não reconciliam com o total exibido. Ainda não entram no
+            rendimentos não reconciliam com o total exibido. Ainda não entram na
             reserva.
           </p>
           <div className="money-preview">
@@ -972,7 +1012,7 @@ export function LegacyForm({
             data.legacy.status === "resolved"
           }
         />
-      </form>
+      </EntryForm>
     </Modal>
   );
 }
