@@ -9,3 +9,9 @@ coverage/
 playwright-report/
 test-results/
 .DS_Store
+
+# Personal exports and local recovery files
+backups/
+*.backup.json
+cash-tracker-*.json
+*.log
