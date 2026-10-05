@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Moon, Sun, TrendingUp } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
+import { BrandMark } from "../components/BrandMark";
 import { useTheme } from "../theme";
 import { PasswordField } from "./PasswordField";
 
@@ -140,9 +141,7 @@ export function AuthForm({
         </button>
       </div>
       <section className="auth-card panel">
-        <span className="brand-mark">
-          <TrendingUp size={23} />
-        </span>
+        <BrandMark />
         <h1>
           {mode === "login"
             ? "Entrar no Cash Tracker"

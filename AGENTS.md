@@ -28,6 +28,7 @@ O app é um registro manual e simples de salários, estimativas de gastos e rese
 - O servidor determina o proprietário por `auth.uid()`. Não use chave secreta/service role no navegador nem remova RLS.
 - O olho protege a apresentação das telas principais. Modais revelam seus próprios campos; backups contêm valores reais. Não mude esse contrato silenciosamente.
 - Preserve navegação por teclado, foco do modal, labels, feedback acessível, temas e usabilidade em telas estreitas.
+- A logo oficial é a setinha de crescimento. Use `BrandMark` nas telas e mantenha favicons/ícones de instalação derivados do mesmo desenho, conforme [branding.md](docs/branding.md).
 - O service worker só é registrado no build de produção. Todos os arquivos gerados, inclusive chunks lazy, devem entrar no precache.
 
 ## Dados e ambientes

@@ -6,6 +6,7 @@
 | [Guia para agentes](../AGENTS.md) | Regras de escopo, simplicidade, dados e entrega. |
 | [Desenvolvimento](development.md) | Ambiente local, comandos e diagnóstico. |
 | [Arquitetura e regras](architecture.md) | Fluxo de gravação, cálculos, persistência e PWA. |
+| [Marca e ícones](branding.md) | Logo oficial, fontes vetoriais, favicons e imagens de instalação. |
 | [Verificação e harness](verification.md) | Suítes, checks de build e roteiro manual. |
 | [Contas e sincronização](authentication.md) | Supabase, sessões, offline, conflitos e privacidade. |
 | [Publicação](deployment.md) | Checklist de build cloud, configuração e validação da publicação. |

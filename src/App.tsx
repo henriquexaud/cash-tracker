@@ -61,6 +61,7 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
+import { BrandMark } from "./components/BrandMark";
 import { DialogActions, SavingContext } from "./components/Saving";
 import { InstallGuide } from "./components/InstallGuide";
 import {
@@ -369,9 +370,7 @@ export default function App({
     return (
       <SavingContext.Provider value={saving}>
       <div className="loading-screen">
-        <div className="brand-mark">
-          <TrendingUp size={23} />
-        </div>
+        <BrandMark />
         <h1>Cash Tracker</h1>
         {loadError ? (
           <>
@@ -903,9 +902,7 @@ export default function App({
           href="#dashboard"
           aria-label="Cash Tracker, visão geral"
         >
-          <span className="brand-mark">
-            <TrendingUp size={23} strokeWidth={2.4} />
-          </span>
+          <BrandMark />
           <span>
             cash<span className="brand-light">tracker</span>
             <span className="brand-dot">.</span>
@@ -933,6 +930,7 @@ export default function App({
       <div className="workspace">
         <header className="topbar">
           <a className="topbar-brand" href="#dashboard">
+            <BrandMark />
             Cash Tracker
           </a>
           <div className="topbar-actions">

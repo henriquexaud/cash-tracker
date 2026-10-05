@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TrendingUp } from "lucide-react";
+import { BrandMark } from "../components/BrandMark";
 import App from "../App";
 import { createAuthClient, readCloudConfig } from "./client";
 import { createCloudRepository } from "./cloud-repository";
@@ -184,9 +184,7 @@ export function AuthGate() {
   if (!client || loading)
     return (
       <main className="loading-screen">
-        <span className="brand-mark">
-          <TrendingUp size={23} />
-        </span>
+        <BrandMark />
         <h1>Cash Tracker</h1>
         <p role={!client ? "alert" : "status"}>
           {clientResult.error || "Abrindo sua conta…"}

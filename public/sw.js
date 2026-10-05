@@ -4,8 +4,12 @@ const PRECACHE_URLS = /* CASH_TRACKER_PRECACHE */ [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
+  "/favicon.ico",
+  "/icons/logo.svg",
+  "/icons/logo-192.png",
+  "/icons/logo-512.png",
+  "/icons/logo-maskable-512.png",
+  "/icons/logo-apple-touch.png",
 ];
 const CACHE_PREFIX = "cash-tracker-app-";
 const CACHE_NAME = CACHE_PREFIX + BUILD_VERSION;
