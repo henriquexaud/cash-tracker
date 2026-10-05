@@ -138,10 +138,62 @@ describe("primeiro uso", () => {
     fireEvent.click(screen.getByRole("link", { name: "Configurações" }));
     await screen.findByRole("heading", { name: "Configurações", level: 1 });
     fireEvent.click(screen.getByRole("button", { name: "Como usar o app" }));
-    expect(
-      screen.getByRole("dialog", { name: "Seu mês, em três passos" }),
-    ).toBeTruthy();
+    const guide = screen.getByRole("dialog", { name: "Como usar o Cash Tracker" });
+    expect(within(guide).queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
+    expect(within(guide).getByRole("status").textContent).toBe("Etapa 1 de 3");
+    fireEvent.click(within(guide).getByRole("button", { name: "Próximo" }));
+    expect(within(guide).getByRole("heading", { name: "Planeje sem registrar cada compra" })).toBe(document.activeElement);
+    fireEvent.click(within(guide).getByRole("button", { name: "Anterior" }));
+    expect(within(guide).getByRole("status").textContent).toBe("Etapa 1 de 3");
+    fireEvent.click(within(guide).getByRole("button", { name: "Etapa 3: Reserva" }));
+    expect(within(guide).getByRole("status").textContent).toBe("Etapa 3 de 3");
+    fireEvent.click(within(guide).getByRole("button", { name: "Concluir" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(app.read()).toEqual(initial);
+    expect(app.repository.save).not.toHaveBeenCalled();
+  });
+
+  it("oferece instruções por dispositivo quando não há instalação direta", async () => {
+    rememberGuide("new-user");
+    const app = setup();
+    app.mount();
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    fireEvent.click(screen.getByRole("link", { name: "Configurações" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Como instalar" }));
+    const guide = screen.getByRole("dialog", { name: "Instalar o Cash Tracker" });
+    expect(within(guide).queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
+    fireEvent.click(within(guide).getByRole("button", { name: "iPhone / iPad" }));
+    expect(within(guide).getByText("Adicione à Tela de Início")).toBeTruthy();
+    fireEvent.click(within(guide).getByRole("button", { name: "Android" }));
+    expect(within(guide).getByText("Abra o menu de três pontos")).toBeTruthy();
+    fireEvent.click(within(guide).getByRole("button", { name: "Computador" }));
+    expect(within(guide).getByText("Pelo Chrome ou Edge")).toBeTruthy();
+    fireEvent.click(within(guide).getByRole("button", { name: "Entendi" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(app.repository.save).not.toHaveBeenCalled();
+  });
+
+  it("usa a instalação direta e mantém ajuda disponível se o navegador falhar", async () => {
+    rememberGuide("new-user");
+    const app = setup();
+    app.mount();
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    fireEvent.click(screen.getByRole("link", { name: "Configurações" }));
+    await screen.findByRole("heading", { name: "Configurações", level: 1 });
+    const prompt = vi.fn().mockRejectedValue(new Error("Prompt indisponível"));
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    Object.assign(event, { prompt, userChoice: Promise.resolve({ outcome: "dismissed" }) });
+    fireEvent(window, event);
+    expect(event.defaultPrevented).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Instalar app" }));
+    await screen.findByRole("dialog", { name: "Instalar o Cash Tracker" });
+    expect(prompt).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Entendi" }));
+    fireEvent(window, new Event("appinstalled"));
+    expect(screen.getByText("Instalado neste dispositivo")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Como instalar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ver instruções" }));
+    expect(screen.getByRole("dialog", { name: "Instalar o Cash Tracker" })).toBeTruthy();
     expect(app.repository.save).not.toHaveBeenCalled();
   });
 

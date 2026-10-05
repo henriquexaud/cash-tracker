@@ -1300,117 +1300,118 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-/* Settings and forms favor short, readable labels. */
-.settings-grid {
+/* Settings keep related actions together, with secondary explanations on demand. */
+.settings-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 20px;
+  max-width: 920px;
 }
-.settings-card {
-  padding: 26px;
-}
-.settings-icon {
-  display: none;
-}
-.settings-card h2 {
-  font-size: 17px;
-}
-.settings-card > p {
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--muted);
-  margin-top: 10px;
-}
-.backup-status {
+.settings-welcome {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--muted);
-  margin: 18px 0;
-}
-.settings-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.settings-card > .form-hint {
-  display: block;
-  margin-top: 16px;
-}
-.appearance-card {
-  grid-column: 1 / -1;
-}
-.theme-picker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 20px;
-  max-width: 600px;
-}
-.theme-option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 58px;
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 13px;
-  padding: 12px;
-}
-.theme-option:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-.theme-option[aria-pressed="true"] {
+  gap: 18px;
+  padding: 22px 24px;
+  border: 1px solid var(--notice-border);
+  border-radius: 10px;
   background: var(--green-light);
+}
+.settings-welcome-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--surface);
   color: var(--green);
-  border-color: var(--green);
-  font-weight: 600;
+  flex-shrink: 0;
 }
-.theme-option-icon {
-  display: inline-flex;
-}
-.theme-status {
-  display: block;
-  margin-top: 14px;
-}
-.settings-facts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 18px 0;
-}
-.settings-facts > span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.import-facts {
-  margin: 18px 0;
-}
-.import-facts > div {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-soft);
-  font-size: 12px;
-  color: var(--muted);
-}
-.import-facts strong {
-  color: var(--text);
-  text-align: right;
-  font-weight: 500;
+.settings-welcome > div { flex: 1; min-width: 0; }
+.settings-welcome h2 { font-size: 16px; line-height: 1.5; }
+.settings-welcome p { margin-top: 5px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+.settings-welcome .button { flex-shrink: 0; }
+.settings-block { padding: 26px; }
+.settings-section-heading { display: flex; align-items: flex-start; gap: 12px; }
+.settings-section-heading > svg { flex-shrink: 0; margin-top: 2px; color: var(--green); }
+.settings-section-heading h2 { font-size: 17px; line-height: 1.5; }
+.settings-section-heading p { font-size: 13px; line-height: 1.7; color: var(--muted); margin-top: 4px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 0; border-bottom: 1px solid var(--border-soft); }
+.settings-section-heading + .settings-row { margin-top: 6px; }
+.settings-row-copy { flex: 1; min-width: 0; }
+.settings-row h3 { font-size: 14px; line-height: 1.6; font-weight: 550; }
+.settings-row p { font-size: 13px; line-height: 1.7; margin-top: 5px; color: var(--muted); }
+.settings-row .settings-email { color: var(--text); overflow-wrap: anywhere; }
+.settings-row > .button { flex-shrink: 0; }
+.settings-row-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; max-width: 320px; }
+.settings-row-actions .button { white-space: nowrap; }
+.settings-backup-date { display: block; font-size: 12px; line-height: 1.6; margin-top: 10px; color: var(--muted); }
+.settings-detail-note { font-size: 12px; line-height: 1.7; color: var(--muted); margin-top: 16px; max-width: 680px; }
+.settings-offline-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.settings-offline-status.ready { color: var(--green); }
+.settings-storage-details { margin-top: 18px; }
+.settings-storage-details summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; min-height: 36px; font-size: 13px; color: var(--muted); }
+.settings-storage-details summary::-webkit-details-marker { display: none; }
+.settings-storage-details summary svg { flex-shrink: 0; transition: transform .15s; }
+.settings-storage-details[open] summary svg { transform: rotate(90deg); }
+.settings-storage-details > div { padding-top: 4px; max-width: 730px; }
+.settings-storage-details p { font-size: 13px; color: var(--muted); line-height: 1.8; margin-top: 10px; }
+.settings-storage-details .text-button { margin-top: 12px; text-align: left; }
+.settings-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.theme-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+.theme-option { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; border: 1px solid var(--border-control); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; padding: 12px; }
+.theme-option:hover { background: var(--surface-hover); color: var(--text); }
+.theme-option[aria-pressed="true"] { background: var(--green-light); color: var(--green); border-color: var(--green); font-weight: 600; }
+.theme-option-icon { display: inline-flex; }
+.theme-status { display: block; margin-top: 12px; }
+.modal.settings-guide, .modal.install-guide { width: min(100%, 590px); display: flex; flex-direction: column; overflow: hidden; }
+.settings-guide .modal-header, .install-guide .modal-header { flex-shrink: 0; }
+.settings-guide .modal-body, .install-guide .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.settings-guide .modal-footer, .install-guide .modal-footer { flex-shrink: 0; }
+.guide-navigation { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px; }
+.guide-navigation button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 12px; }
+.guide-navigation button > span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); font-size: 11px; flex-shrink: 0; }
+.guide-navigation button[aria-current="step"] { background: var(--green-light); color: var(--green); border-color: var(--green); }
+.guide-navigation button[aria-current="step"] > span { background: var(--green); color: var(--surface); }
+.guide-page, .install-content { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+.guide-page-icon { display: inline-grid; place-items: center; width: 50px; height: 50px; background: var(--green-light); color: var(--green); border-radius: 12px; margin-bottom: 14px; }
+.guide-page-count { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.guide-page h3 { font-size: 23px; line-height: 1.3; letter-spacing: -.5px; }
+.guide-page h3:focus { outline: none; }
+.guide-description { margin-top: 10px; font-size: 13px; line-height: 1.8; color: var(--muted); }
+.guide-highlights { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0; }
+.guide-highlights span { font-size: 11px; line-height: 1.5; background: var(--surface-soft); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--muted); padding: 7px 9px; }
+.guide-points { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+.guide-points li { display: flex; align-items: flex-start; gap: 10px; }
+.guide-points svg { color: var(--green); flex-shrink: 0; margin-top: 3px; }
+.guide-points strong { font-size: 13px; font-weight: 550; line-height: 1.6; }
+.guide-points p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-top: 4px; }
+.guide-note, .install-offline-note { padding: 13px 15px; border-radius: 8px; background: var(--green-light); color: var(--green); font-size: 12px; line-height: 1.8; margin-top: 20px; }
+.guide-footer { justify-content: space-between; }
+.install-platforms { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 22px; }
+.install-platforms button { display: flex; justify-content: center; align-items: center; gap: 7px; border: 1px solid var(--border-control); background: var(--surface); color: var(--muted); border-radius: 8px; min-height: 44px; font-size: 12px; padding: 8px; }
+.install-platforms button[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-light); }
+.install-heading { font-size: 17px; line-height: 1.5; margin-bottom: 16px; }
+.install-steps { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 18px; }
+.install-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.install-steps li > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-soft); color: var(--green); font-size: 12px; flex-shrink: 0; }
+.install-steps strong { font-size: 13px; line-height: 1.6; font-weight: 550; }
+.install-steps p { font-size: 13px; line-height: 1.8; color: var(--muted); margin-top: 4px; }
+@media (max-width: 760px) {
+  .settings-layout { gap: 16px; }
+  .settings-welcome { flex-wrap: wrap; padding: 20px; gap: 12px; }
+  .settings-welcome > div { flex-basis: calc(100% - 56px); }
+  .settings-welcome .button { width: 100%; margin-top: 4px; }
+  .settings-block { padding: 20px; }
+  .settings-row { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px 0; }
+  .settings-row-actions { justify-content: flex-start; max-width: none; width: 100%; }
+  .settings-backup-row .settings-row-actions .button { flex: 1; }
+  .settings-install-row .settings-row-actions .button { width: 100%; }
+  .guide-navigation { margin-bottom: 20px; gap: 6px; }
+  .guide-navigation button, .install-platforms button { flex-direction: column; font-size: 11px; gap: 6px; padding: 8px 4px; }
+  .guide-page { min-height: 0; }
+  .guide-page h3 { font-size: 21px; }
+  .guide-page-icon { width: 42px; height: 42px; margin-bottom: 12px; }
+  .guide-highlights { margin: 15px 0; }
+  .guide-points { gap: 14px; }
 }
 .modal-backdrop {
   position: fixed;
@@ -1727,9 +1728,6 @@ textarea.input {
   }
   .goals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .settings-grid {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 760px) {
@@ -2088,12 +2086,6 @@ textarea.input {
   .movement-row > strong {
     margin-left: 42px;
     flex: 1;
-  }
-  .settings-grid {
-    gap: 20px;
-  }
-  .settings-card {
-    padding: 22px;
   }
   .theme-picker {
     gap: 8px;

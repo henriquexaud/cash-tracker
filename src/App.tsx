@@ -61,6 +61,8 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
+import { SettingsGuide } from "./components/SettingsGuide";
+import { InstallGuide } from "./components/InstallGuide";
 import {
   QuickGuide,
   rememberGuide,
@@ -528,7 +530,10 @@ export default function App({
     navigate,
     showGuide: () => {
       close();
-      setGuideOpen(true);
+      if (page === "settings") {
+        setGuideOpen(false);
+        setModal(<SettingsGuide onClose={close} />);
+      } else setGuideOpen(true);
     },
     editSalary: (salary, target = salary?.month ?? month) =>
       setModal(
@@ -851,31 +856,17 @@ export default function App({
             error: true,
           }),
         ),
+    showInstallGuide: () => setModal(<InstallGuide onClose={close} />),
     install: () => {
       if (installPrompt)
-        void installPrompt
-          .prompt()
+        void installPrompt.prompt()
           .then(() => installPrompt.userChoice)
-          .then(() => setInstallPrompt(null));
-      else
-        setModal(
-          <Modal title="Instalar o Cash Tracker" onClose={close}>
-            <p className="modal-description">
-              No iPhone, abra no Safari, toque em Compartilhar e selecione{" "}
-              <strong>Adicionar à Tela de Início</strong>. No computador ou
-              Android, use a opção de instalação no menu do navegador.
-            </p>
-            <p className="form-hint">
-              A versão publicada precisa ser acessada por HTTPS. Depois da
-              primeira carga, o aplicativo funciona offline neste dispositivo.
-            </p>
-            <div className="modal-footer">
-              <button className="button primary" onClick={close}>
-                Entendi
-              </button>
-            </div>
-          </Modal>,
-        );
+          .then(() => setInstallPrompt(null))
+          .catch(() => {
+            setInstallPrompt(null);
+            setModal(<InstallGuide onClose={close} />);
+          });
+      else setModal(<InstallGuide onClose={close} />);
     },
   };
 
@@ -1015,7 +1006,7 @@ export default function App({
                     history:
                       "Salários e orçamentos, desde os primeiros registros.",
                     wealth: "Acompanhe o dinheiro que você guardou de fato.",
-                    settings: "Aparência, backup e armazenamento.",
+                    settings: "Personalize o app e cuide dos seus dados.",
                   }[page]
                 }
               </p>

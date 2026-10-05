@@ -31,6 +31,7 @@ export interface Actions {
   signOut: () => void;
   requestPersistence: () => void;
   install: () => void;
+  showInstallGuide: () => void;
   showGuide: () => void;
 }
 export interface AuthAccount {

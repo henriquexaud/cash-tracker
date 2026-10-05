@@ -30,12 +30,11 @@ export function ThemePicker({
           </button>
         ))}
       </div>
-      <span className="form-hint theme-status" role="status">
-        {preference === "system"
-          ? `Segue a aparência do dispositivo. Agora: ${resolvedTheme === "dark" ? "escuro" : "claro"}.`
-          : `Tema ${resolvedTheme === "dark" ? "escuro" : "claro"} ativado.`}
-        {" "}Preferência deste dispositivo.
-      </span>
+      {preference === "system" && (
+        <span className="form-hint theme-status" role="status">
+          Acompanha o dispositivo. Agora: {resolvedTheme === "dark" ? "escuro" : "claro"}.
+        </span>
+      )}
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ArrowDownLeft,
-  ArrowDownToLine,
   ArrowRight,
   ArrowUpRight,
   Building2,
@@ -12,7 +11,6 @@ import {
   Copy,
   Download,
   Dumbbell,
-  FileCheck2,
   HeartPulse,
   House,
   Info,
@@ -51,6 +49,7 @@ import { Select } from "./components/Select";
 import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
 import { ThemePicker } from "./components/ThemePicker";
+import { useInstalledApp } from "./components/InstallGuide";
 import type { PageProps } from "./ui-types";
 
 const percent = (value: number) =>
@@ -1074,180 +1073,87 @@ export function WealthPage({ data, month, actions }: PageProps) {
 }
 
 export function SettingsPage({
-  data,
-  actions,
-  offlineReady,
-  persistent,
-  canInstall,
-  theme,
-  account,
-  storageMode,
+  data, actions, offlineReady, persistent, canInstall, theme, account, storageMode,
 }: PageProps) {
-  const { money: formatMoney, protect } = usePrivacy();
+  const { protect } = usePrivacy();
+  const installed = useInstalledApp();
   return (
-    <div className="settings-grid">
-      <section className="panel settings-card">
-        <span className="settings-icon">
-          <Info size={23} />
-        </span>
-        <h2>Guia rápido</h2>
-        <p>Reveja o essencial para registrar seu mês.</p>
-        <button className="button secondary" onClick={actions.showGuide}>
-          Como usar o app
-        </button>
+    <div className="settings-layout">
+      <section className="settings-welcome" aria-labelledby="settings-guide-title">
+        <span className="settings-welcome-icon"><Info size={23} aria-hidden="true" /></span>
+        <div>
+          <h2 id="settings-guide-title">Entenda seu mês em três passos</h2>
+          <p>Recebido, orçamento e reserva. Um guia para usar o app com clareza.</p>
+        </div>
+        <button className="button secondary" onClick={actions.showGuide}>Como usar o app <ArrowRight size={16} /></button>
       </section>
-      {account && (
-        <section className="panel settings-card">
-          <span className="settings-icon">
-            <ShieldCheck size={23} />
-          </span>
-          <h2>Sua conta</h2>
-          <p>{protect(account.email)}</p>
-          <p>
-            Os dados ficam disponíveis offline neste dispositivo e sincronizam
-            com seus outros dispositivos.
-          </p>
-          <div className="settings-actions">
-            <button className="button secondary" onClick={actions.signOut}>
-              Sair
-            </button>
-          </div>
-        </section>
-      )}
-      <section className="panel settings-card appearance-card">
-        <span className="settings-icon">
-          <Palette size={23} />
-        </span>
-        <h2>Aparência</h2>
-        <p>Escolha o tema que deixa a leitura mais confortável para você.</p>
+
+      <section className="panel settings-block" aria-labelledby="settings-appearance-title">
+        <div className="settings-section-heading">
+          <Palette size={20} aria-hidden="true" />
+          <div><h2 id="settings-appearance-title">Aparência</h2><p>Escolha o tema deste dispositivo.</p></div>
+        </div>
         <ThemePicker {...theme} />
       </section>
-      <section className="panel settings-card">
-        <span className="settings-icon">
-          <ArrowDownToLine size={23} />
-        </span>
-        <h2>Backup</h2>
-        <p>Exporte ou restaure todos os dados do Cash Tracker.</p>
-        <div className="backup-status">
-          <span
-            className={`status-dot ${!data.preferences.lastBackupAt ? "offline" : ""}`}
-          />
-          <span>
-            {data.preferences.lastBackupAt
-              ? `Última exportação: ${new Date(data.preferences.lastBackupAt).toLocaleString("pt-BR")}`
-              : "Você ainda não exportou um backup."}
-          </span>
+
+      <section className="panel settings-block" aria-labelledby="settings-data-title">
+        <div className="settings-section-heading">
+          <ShieldCheck size={20} aria-hidden="true" />
+          <div><h2 id="settings-data-title">Conta e backup</h2><p>{storageMode === "cloud" ? "Seus registros são privados e vinculados à sua conta." : "Seus registros ficam neste navegador."}</p></div>
         </div>
-        <div className="settings-actions">
-          <button className="button primary" onClick={actions.backup}>
-            <Download size={16} /> Exportar backup
-          </button>
-          <button className="button secondary" onClick={actions.restore}>
-            Restaurar backup
-          </button>
-        </div>
-        <span className="form-hint">
-          Restaurar substitui os dados atuais. O arquivo contém os valores
-          reais, mesmo com o olho fechado.
-        </span>
-      </section>
-      <section className="panel settings-card">
-        <span className="settings-icon">
-          <Smartphone size={23} />
-        </span>
-        <h2>Instalação</h2>
-        <p>
-          Adicione o Cash Tracker à tela de início para abrir e registrar dados
-          sem internet, após o primeiro acesso.
-        </p>
-        <div className="backup-status">
-          <span className={`status-dot ${!offlineReady ? "offline" : ""}`} />
-          <span>
-            {offlineReady
-              ? "Aplicativo disponível offline."
-              : import.meta.env.DEV
-                ? "O modo offline fica disponível na versão de produção."
-                : "Preparando o aplicativo para funcionar offline."}
-          </span>
-        </div>
-        <button className="button secondary" onClick={actions.install}>
-          {canInstall
-            ? "Instalar Cash Tracker"
-            : "Como instalar no dispositivo"}
-          <ArrowUpRight size={16} />
-        </button>
-        <span className="form-hint">
-          No iPhone: Safari → Compartilhar → Adicionar à Tela de Início.
-        </span>
-      </section>
-      <section className="panel settings-card">
-        <span className="settings-icon">
-          <ShieldCheck size={23} />
-        </span>
-        <h2>
-          {storageMode === "cloud"
-            ? "Offline e sincronização"
-            : "Armazenamento local"}
-        </h2>
-        <p>
-          {storageMode === "cloud"
-            ? "As edições são salvas aqui e enviadas ao reconectar. No mesmo registro, prevalece a última edição; registros diferentes são combinados."
-            : "Cada navegador mantém seus próprios dados. Use um backup para transferi-los a outro dispositivo."}
-        </p>
-        <div className="settings-facts">
-          <span>
-            <Check size={15} />{" "}
-            {persistent
-              ? "Armazenamento persistente ativado"
-              : "Armazenamento gerenciado pelo navegador"}
-          </span>
-        </div>
-        {!persistent && (
-          <button className="text-button" onClick={actions.requestPersistence}>
-            Solicitar proteção do armazenamento <ArrowRight size={14} />
-          </button>
-        )}
-        <span className="form-hint">
-          Limpar os dados do navegador pode apagar seu histórico. O arquivo de
-          backup permite recuperá-lo.
-        </span>
-      </section>
-      {data.legacy.status !== "none" && (
-        <section className="panel settings-card">
-          <span className="settings-icon">
-            <FileCheck2 size={23} />
-          </span>
-          <h2>Dados importados</h2>
-          <p>
-            Registros da planilha preservados na sua conta ou neste dispositivo.
-          </p>
-          <div className="import-facts">
-            <div>
-              <span>Salários registrados</span>
-              <strong>{data.salaries.length} registros</strong>
-            </div>
-            <div>
-              <span>Orçamento-base original</span>
-              <strong>{formatMoney(budgetTotal(data.budgetTemplate))}</strong>
-            </div>
-            <div>
-              <span>Reserva da planilha</span>
-              <strong>
-                {data.legacy.historyImported
-                  ? "Histórico incluído"
-                  : data.legacy.status === "pending"
-                    ? "Histórico disponível"
-                    : "Saldo confirmado"}
-              </strong>
-            </div>
+        {account && (
+          <div className="settings-row">
+            <div className="settings-row-copy"><h3>Sua conta</h3><p className="settings-email">{protect(account.email)}</p><p>Entre com a mesma conta para acessar em outro dispositivo.</p></div>
+            <button className="button secondary" onClick={actions.signOut}>Sair da conta</button>
           </div>
-          <span className="form-hint">
-            {data.legacy.historyImported
-              ? "Os registros importados permanecem preservados na sua conta e no backup."
-              : "Os dados anteriores foram preservados. Confira o saldo inicial na Reserva, se estiver pendente."}
-          </span>
-        </section>
-      )}
+        )}
+        <div className="settings-row settings-backup-row">
+          <div className="settings-row-copy">
+            <h3>Cópia de segurança</h3><p>Guarde um arquivo com todos os seus registros ou recupere um backup.</p>
+            <span className="settings-backup-date">{data.preferences.lastBackupAt
+              ? `Última exportação: ${new Date(data.preferences.lastBackupAt).toLocaleString("pt-BR")}`
+              : "Nenhum arquivo exportado ainda."}</span>
+          </div>
+          <div className="settings-row-actions">
+            <button className="button primary" onClick={actions.backup}><Download size={16} /> Exportar backup</button>
+            <button className="button secondary" onClick={actions.restore}>Restaurar backup</button>
+          </div>
+        </div>
+        <p className="settings-detail-note">O arquivo contém os valores reais, mesmo com o olho fechado. Restaurar substitui os registros atuais após sua confirmação.</p>
+      </section>
+
+      <section className="panel settings-block" aria-labelledby="settings-device-title">
+        <div className="settings-section-heading">
+          <Smartphone size={20} aria-hidden="true" />
+          <div><h2 id="settings-device-title">App no seu dispositivo</h2><p>Abra direto pela tela de início ou pelo atalho do computador.</p></div>
+        </div>
+        <div className="settings-row settings-install-row">
+          <div className="settings-row-copy">
+            <h3>{installed ? "Instalado neste dispositivo" : "Tenha o Cash Tracker à mão"}</h3>
+            <p>{installed ? "Você pode continuar usando o app por esta janela." : "Instale pelo navegador. Não precisa baixar pela loja de aplicativos."}</p>
+            <span className={`settings-offline-status ${offlineReady ? "ready" : ""}`} role="status">
+              {offlineReady ? <Check size={14} aria-hidden="true" /> : <Wifi size={14} aria-hidden="true" />}
+              {offlineReady ? "Pronto para usar offline" : import.meta.env.DEV ? "Uso offline disponível na versão publicada" : "Preparando o uso offline"}
+            </span>
+          </div>
+          <div className="settings-row-actions">
+            {!installed && <button className="button secondary" onClick={actions.install}>
+              {canInstall ? "Instalar app" : "Como instalar"}<ArrowUpRight size={16} />
+            </button>}
+            {(installed || canInstall) && <button className="text-button" onClick={actions.showInstallGuide}>Ver instruções</button>}
+          </div>
+        </div>
+        <details className="settings-storage-details">
+          <summary>Uso offline e armazenamento <ChevronRight size={16} aria-hidden="true" /></summary>
+          <div>
+            <p>{storageMode === "cloud"
+              ? "Após preparar este dispositivo com internet, você pode consultar e editar offline. As alterações são enviadas ao reconectar; a última edição do mesmo registro prevalece."
+              : "Após preparar o app com internet, seus registros ficam disponíveis offline neste navegador. Use um backup para levá-los a outro dispositivo."}</p>
+            <p>{persistent ? "O navegador concedeu proteção contra limpezas automáticas." : "Você pode pedir ao navegador para manter os dados ao liberar espaço."} Apagar os dados do navegador manualmente remove a cópia deste dispositivo.</p>
+            {!persistent && <button className="text-button" onClick={actions.requestPersistence}>Solicitar proteção contra limpeza <ArrowRight size={14} /></button>}
+          </div>
+        </details>
+      </section>
     </div>
   );
 }
