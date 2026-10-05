@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -31,6 +30,7 @@ import {
   validateMovement,
 } from "./domain/finance";
 import { createEmptyData } from "./domain/empty";
+import { APP_VERSION } from "./config";
 import { needsReview, validateSynchronizedEdit } from "./sync/document";
 import { PrivacyToggle, SensitiveText, usePrivacy } from "./privacy";
 import {
@@ -47,7 +47,6 @@ import type {
 } from "./domain/types";
 import {
   exportBackup,
-  loadData as loadLocalData,
   parseBackup,
   validateBackup,
 } from "./storage";
@@ -158,20 +157,9 @@ export default function App({
       const result = await lock(async () => {
         const existing = await loadData();
         if (existing) return existing;
-        let seed = createEmptyData();
-        if (import.meta.env.VITE_STORAGE_MODE === "local") {
-          const [{ createInitialData }, { getSavingsHistoryPlan }] =
-            await Promise.all([
-              import("./domain/seed"),
-              import("./domain/savings-history"),
-            ]);
-          const initial = getSavingsHistoryPlan(createInitialData()).next;
-          if (!initial)
-            throw new Error("Não foi possível preparar os dados da planilha.");
-          seed = initial;
-        }
-        await saveData(seed);
-        return seed;
+        const initial = createEmptyData();
+        await saveData(initial);
+        return initial;
       });
       setData(result);
       setGuideOpen(shouldShowGuide(result, guideIdentity));
@@ -810,101 +798,6 @@ export default function App({
           }
         />,
       ),
-    importSavingsHistory: () => {
-      if (import.meta.env.VITE_STORAGE_MODE === "local")
-        void (async () => {
-          const [{ SavingsHistoryForm }, { getSavingsHistoryPlan }] =
-            await Promise.all([
-              import("./components/SavingsHistoryForm"),
-              import("./domain/savings-history"),
-            ]);
-          setModal(
-            <SavingsHistoryForm
-              data={data}
-              onClose={close}
-              onConfirm={() =>
-                commit((current) => {
-                  const plan = getSavingsHistoryPlan(current);
-                  if (plan.status !== "ready" || !plan.next)
-                    throw new Error(
-                      plan.reason ??
-                        "O histórico não pode ser incluído novamente.",
-                    );
-                  downloadBackup(current, "cash-tracker-antes-do-historico");
-                  return plan.next;
-                }, "Histórico incluído. O backup anterior foi exportado.")
-              }
-            />,
-          );
-        })();
-    },
-    importLocal: () =>
-      void (async () => {
-        try {
-          const legacy = await loadLocalData();
-          if (!legacy)
-            throw new Error(
-              "Nenhum dado anterior foi encontrado neste navegador. Você também pode restaurar um backup.",
-            );
-          const hasRecords = (value: AppData) =>
-            value.salaries.length ||
-            value.budgets.length ||
-            value.movements.length ||
-            value.goals.length ||
-            value.accounts.length ||
-            value.budgetTemplate.length;
-          if (hasRecords(data))
-            throw new Error(
-              "Esta conta já possui registros. Exporte um backup e use a restauração caso queira substituí-los.",
-            );
-          setModal(
-            <Modal
-              title="Levar os dados para sua conta?"
-              onClose={close}
-              sensitiveContent
-            >
-              <p className="modal-description">
-                Os dados anteriores deste navegador têm {legacy.salaries.length}{" "}
-                salários e {legacy.movements.length} movimentações. Eles serão
-                vinculados a{" "}
-                <SensitiveText>{account?.email ?? "sua conta"}</SensitiveText>.
-              </p>
-              <p className="form-hint">
-                Uma cópia será exportada antes de importar. Confirme que estes
-                dados são seus.
-              </p>
-              <div className="modal-footer">
-                <button className="button secondary" onClick={close}>
-                  Cancelar
-                </button>
-                <button
-                  className="button primary"
-                  onClick={() =>
-                    void commit((current) => {
-                      if (hasRecords(current))
-                        throw new Error(
-                          "A conta recebeu novos registros. Reabra a importação.",
-                        );
-                      downloadBackup(legacy, "cash-tracker-antes-da-migracao");
-                      return legacy;
-                    }, "Dados vinculados à sua conta e salvos neste dispositivo.")
-                  }
-                >
-                  Salvar cópia e importar
-                </button>
-              </div>
-            </Modal>,
-          );
-        } catch (error) {
-          setNotice({
-            text:
-              error instanceof Error
-                ? error.message
-                : "Não foi possível importar os dados anteriores.",
-            error: true,
-          });
-        }
-      })(),
     signOut: () => {
       if (account)
         confirm(
@@ -1042,14 +935,9 @@ export default function App({
           ))}
         </nav>
         <div className="sidebar-footer">
-          <button className="sidebar-backup" onClick={actions.backup}>
-            <ArrowDownToLine size={15} /> Exportar backup{" "}
-          </button>
-          <p>
-            {account
-              ? "Sua conta, disponível offline."
-              : "Dados salvos neste dispositivo."}
-          </p>
+          <span className="app-version" aria-label={`Versão ${APP_VERSION}`}>
+            v{APP_VERSION}
+          </span>
         </div>
       </aside>
       <div className="workspace">

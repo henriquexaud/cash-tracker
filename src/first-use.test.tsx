@@ -63,9 +63,30 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("primeiro uso", () => {
+  it.each(["local", "cloud"] as const)("inicializa %s vazio, sem dados de outra pessoa", async (mode) => {
+    vi.stubEnv("VITE_STORAGE_MODE", mode);
+    let saved: AppData | null = null;
+    const repository: DataRepository = {
+      mode,
+      load: vi.fn(async () => saved),
+      save: vi.fn(async (next) => { saved = structuredClone(next); }),
+    };
+    render(
+      <PrivacyContext.Provider value={privacySettings(false, vi.fn())}>
+        <App repository={repository} />
+      </PrivacyContext.Provider>,
+    );
+    await screen.findByRole("dialog", { name: "Seu mês, em três passos" });
+    expect(saved).toMatchObject({
+      salaries: [], budgets: [], budgetTemplate: [], accounts: [], movements: [], goals: [],
+      legacy: { status: "none", movements: [], possibleReturns: [] },
+    });
+  });
+
   it("apresenta o essencial em uma única janela sem controle de valores e permite pular", async () => {
     const app = setup();
     app.mount();

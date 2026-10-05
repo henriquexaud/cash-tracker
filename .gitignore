@@ -10,3 +10,9 @@ test-results/
 .vercel
 .env*
 !.env.example
+
+# Personal exports and local recovery files
+backups/
+*.backup.json
+cash-tracker-*.json
+*.log
