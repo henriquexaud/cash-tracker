@@ -48,6 +48,7 @@ import { usePrivacy } from "./privacy";
 import { Select } from "./components/Select";
 import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
+import { DashboardActivity, DashboardPlanning } from "./components/DashboardDetails";
 import { ThemePicker } from "./components/ThemePicker";
 import { useInstalledApp } from "./components/InstallGuide";
 import type { PageProps } from "./ui-types";
@@ -221,7 +222,7 @@ function ChartRange({
 }
 
 export function DashboardPage({ data, month, actions }: PageProps) {
-  const { money: formatMoney, hidden, protect } = usePrivacy();
+  const { money: formatMoney, hidden } = usePrivacy();
   const stats = salaryStats(data.salaries);
   const summary = monthlySummary(data, month);
   const wealth = wealthStats(data, month);
@@ -231,7 +232,7 @@ export function DashboardPage({ data, month, actions }: PageProps) {
   const cost = summary.estimatedExpenses;
   const free = summary.estimatedFree;
   return (
-    <>
+    <div className="dashboard-content">
       <section className="metrics-strip three" aria-label="Resumo do mês">
         <Metric
           label="Recebido no mês"
@@ -266,12 +267,12 @@ export function DashboardPage({ data, month, actions }: PageProps) {
           accent
         />
       </section>
-      <div className="monthly-remainder">
+      <div className="monthly-remainder dashboard-remainder">
         <span>
           {summary.budget || !hasBase
             ? "Livre previsto"
             : "Livre estimado com a base"}
-          <strong className={free !== null && free < 0 ? "negative" : ""}>
+          <strong className={!hidden && free !== null && free < 0 ? "negative" : ""}>
             {free === null || (!summary.budget && !hasBase)
               ? "—"
               : formatMoney(free)}
@@ -287,44 +288,48 @@ export function DashboardPage({ data, month, actions }: PageProps) {
                 : "Após os gastos aproximados."}
         </span>
       </div>
+      <DashboardPlanning data={data} month={month} actions={actions} />
       {(stats.count > 0 ||
         data.accounts.length > 0 ||
         data.legacy.status !== "none") && (
-        <div className="dashboard-columns">
-          <section className="panel dashboard-total">
-            <h2>Recebido no histórico</h2>
-            <div className="lifetime-amount">{formatMoney(stats.total)}</div>
-            <p className="subtle">
-              {stats.count} meses registrados
-              {stats.first && ` · desde ${monthLabel(stats.first.month)}`}
-            </p>
-            <button
-              className="panel-bottom-link"
-              onClick={() => actions.navigate("history")}
-            >
-              Ver histórico <ArrowRight size={16} />
-            </button>
-          </section>
-          <section className="panel dashboard-total">
-            <h2>Saldo guardado</h2>
-            <div className="lifetime-amount">
-              {confirmed ? formatMoney(wealth.total) : "A confirmar"}
-            </div>
-            <p className="subtle">
-              {confirmed
-                ? "Saldo inicial + aportes + rendimentos − retiradas."
-                : "Revise o saldo da planilha na tela Reserva."}
-            </p>
-            <button
-              className="panel-bottom-link"
-              onClick={() => actions.navigate("wealth")}
-            >
-              Ver reserva <ArrowRight size={16} />
-            </button>
-          </section>
+        <div className="dashboard-detail-grid">
+          <div className="panel dashboard-history-panel">
+            <section className="dashboard-total">
+              <h2>Recebido no histórico</h2>
+              <div className="lifetime-amount">{formatMoney(stats.total)}</div>
+              <p className="subtle">
+                {stats.count} {stats.count === 1 ? "mês registrado" : "meses registrados"}
+                {stats.first && ` · desde ${monthLabel(stats.first.month)}`}
+              </p>
+              <button
+                className="panel-bottom-link"
+                onClick={() => actions.navigate("history")}
+              >
+                Ver histórico <ArrowRight size={16} />
+              </button>
+            </section>
+            <section className="dashboard-total">
+              <h2>Saldo guardado</h2>
+              <div className="lifetime-amount">
+                {confirmed ? formatMoney(wealth.total) : "A confirmar"}
+              </div>
+              <p className="subtle">
+                {confirmed
+                  ? "Saldo inicial + aportes + rendimentos − retiradas."
+                  : "Revise o saldo da planilha na tela Reserva."}
+              </p>
+              <button
+                className="panel-bottom-link"
+                onClick={() => actions.navigate("wealth")}
+              >
+                Ver reserva <ArrowRight size={16} />
+              </button>
+            </section>
+          </div>
+          <DashboardActivity data={data} month={month} actions={actions} />
         </div>
       )}
-    </>
+    </div>
   );
 }
 
