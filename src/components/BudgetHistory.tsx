@@ -1,10 +1,11 @@
+import { Select } from "./Select";
+import { usePrivacy } from "../privacy";
 import { useState } from "react";
 import { ArrowRight, CalendarDays } from "lucide-react";
 import {
   budgetSeries,
   budgetStats,
   budgetTotal,
-  formatMoney,
   monthLabel,
 } from "../domain/finance";
 import type { PageProps } from "../ui-types";
@@ -16,6 +17,7 @@ export function BudgetHistory({
   setMonth,
   actions,
 }: Pick<PageProps, "data" | "month" | "setMonth" | "actions">) {
+  const { money: formatMoney } = usePrivacy();
   const [year, setYear] = useState(month.slice(0, 4));
   const stats = budgetStats(data.budgets);
   const years = Array.from(
@@ -44,7 +46,11 @@ export function BudgetHistory({
         <div className="empty-state">
           <CalendarDays size={28} aria-hidden="true" />
           <h3>Nenhum orçamento registrado</h3>
-          <p>Comece com a base da planilha ou crie seu orçamento do mês.</p>
+          <p>
+            {data.budgetTemplate.length
+              ? "Comece com a base da planilha ou crie seu orçamento do mês."
+              : "Adicione os gastos previstos deste mês. Os orçamentos salvos aparecerão aqui."}
+          </p>
           <button
             className="button primary"
             type="button"
@@ -87,7 +93,7 @@ export function BudgetHistory({
             <span className="subtle">Gastos previstos · {periodLabel}</span>
           </div>
           <div className="heading-controls">
-            <select
+            <Select
               aria-label="Filtrar histórico de orçamentos por ano"
               value={year}
               onChange={(event) => setYear(event.target.value)}
@@ -98,7 +104,7 @@ export function BudgetHistory({
                   {value}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         {points.length ? (

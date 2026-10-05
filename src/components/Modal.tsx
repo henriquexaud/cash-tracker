@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { PrivacyToggle, usePrivacy } from "../privacy";
 
 interface ModalProps {
   title: string;
@@ -8,6 +9,8 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   className?: string;
+  sensitiveDescription?: boolean;
+  sensitiveContent?: boolean;
 }
 
 const focusableSelector =
@@ -19,7 +22,11 @@ export function Modal({
   children,
   onClose,
   className = "",
+  sensitiveDescription = false,
+  sensitiveContent = false,
 }: ModalProps) {
+  const { hidden, protect } = usePrivacy();
+  const showPrivacy = sensitiveContent || sensitiveDescription;
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -110,8 +117,7 @@ export function Modal({
         pointerStartedOutside.current = event.target === event.currentTarget;
       }}
       onPointerUp={(event) => {
-        pointerStartedOutside.current &&=
-          event.target === event.currentTarget;
+        pointerStartedOutside.current &&= event.target === event.currentTarget;
       }}
       onPointerCancel={() => {
         pointerStartedOutside.current = false;
@@ -139,10 +145,11 @@ export function Modal({
             <h2 id={titleId}>{title}</h2>
             {description && (
               <p id={descriptionId} className="form-hint">
-                {description}
+                {sensitiveDescription ? protect(description) : description}
               </p>
             )}
           </div>
+          {showPrivacy && <PrivacyToggle />}
           <button
             className="button ghost icon-button"
             type="button"
@@ -153,6 +160,11 @@ export function Modal({
             <X size={20} aria-hidden="true" />
           </button>
         </div>
+        {hidden && showPrivacy && (
+          <p className="form-hint privacy-form-hint">
+            Informações ocultas. Use o olho desta janela para mostrar e editar.
+          </p>
+        )}
         <div className="modal-body">{children}</div>
       </div>
     </div>,

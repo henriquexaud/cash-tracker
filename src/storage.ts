@@ -304,7 +304,10 @@ function budgetItems(value: unknown, path: string): BudgetItem[] {
 }
 
 /** Validate and reconstruct only known fields before any persistent write. */
-export function validateBackup(input: unknown): AppData {
+export function validateBackup(
+  input: unknown,
+  options: { allowFinancialConflicts?: boolean } = {},
+): AppData {
   const root = object(input, "dados");
   if (root.schemaVersion !== 1)
     invalid("schemaVersion", "não é uma versão compatível");
@@ -448,7 +451,11 @@ export function validateBackup(input: unknown): AppData {
   );
   const rawLegacy = object(root.legacy, "legacy");
   const legacy: LegacyImport = {
-    status: choice(rawLegacy.status, ["pending", "resolved"], "legacy.status"),
+    status: choice(
+      rawLegacy.status,
+      ["none", "pending", "resolved"],
+      "legacy.status",
+    ),
     source: string(rawLegacy.source, "legacy.source"),
     capturedAt: timestamp(rawLegacy.capturedAt, "legacy.capturedAt", true),
     movements: list(rawLegacy.movements, "legacy.movements").map(
@@ -511,6 +518,18 @@ export function validateBackup(input: unknown): AppData {
     legacy.resolution = { amount, date: resolvedDate, accountId, movementId };
   }
   if (
+    legacy.status === "none" &&
+    (legacy.historyImported ||
+      legacy.resolution ||
+      legacy.movements.length ||
+      legacy.possibleReturns.length ||
+      legacy.displayedNet !== 0)
+  )
+    invalid(
+      "legacy.status",
+      "uma conta sem planilha não pode conter histórico legado",
+    );
+  if (
     !legacy.historyImported &&
     (legacy.status === "resolved") !== Boolean(legacy.resolution)
   )
@@ -531,11 +550,14 @@ export function validateBackup(input: unknown): AppData {
     legacy,
     preferences: { lastBackupAt },
   };
-  validateFinancialIntegrity(data);
+  validateFinancialIntegrity(data, options.allowFinancialConflicts);
   return data;
 }
 
-function validateFinancialIntegrity(data: AppData): void {
+function validateFinancialIntegrity(
+  data: AppData,
+  allowConflicts = false,
+): void {
   const totals = new Map<string, number>();
   for (const kind of [
     "opening",
@@ -560,8 +582,9 @@ function validateFinancialIntegrity(data: AppData): void {
       totals.get("return")!,
       -totals.get("withdrawal")!,
     ],
-    "patrimônio total",
+    "reserva total",
   );
+  if (allowConflicts) return;
   for (const account of data.accounts) {
     // Domain validation checks the account's entire date-grouped ledger. Once
     // per account is sufficient because every entry's structure was checked.
@@ -580,12 +603,22 @@ function validateFinancialIntegrity(data: AppData): void {
 }
 
 export function exportBackup(data: AppData): string {
+  let requiresReview = false;
+  try {
+    validateBackup(data);
+  } catch {
+    requiresReview = true;
+  }
+  const snapshot = validateBackup(data, {
+    allowFinancialConflicts: requiresReview,
+  });
   return JSON.stringify(
     {
       format: "cash-tracker",
       version: 1,
       exportedAt: new Date().toISOString(),
-      data: validateBackup(data),
+      data: snapshot,
+      ...(requiresReview ? { requiresReview: true } : {}),
     },
     null,
     2,

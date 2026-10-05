@@ -242,9 +242,17 @@ export function monthlySummary(data: AppData, month: Month) {
   const budget = data.budgets.find((entry) => entry.month === month) ?? null;
   const expenses = budget ? budgetTotal(budget.items) : 0;
   const reservePlan = budget?.reservePlan ?? 0;
+  // Preview the base without creating a recorded budget for this month.
+  const budgetItems = budget?.items ?? data.budgetTemplate;
+  const estimatedExpenses = budget ? expenses : budgetTotal(budgetItems);
   return {
     salary,
     budget,
+    budgetItems,
+    estimatedExpenses,
+    estimatedFree: salary
+      ? safeSum([salary.amount, -estimatedExpenses, -reservePlan])
+      : null,
     expenses,
     reservePlan,
     free: salary ? safeSum([salary.amount, -expenses, -reservePlan]) : null,

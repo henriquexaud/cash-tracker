@@ -29,10 +29,20 @@ export interface Actions {
   importSavingsHistory: () => void;
   backup: () => void;
   restore: () => void;
+  importLocal: () => void;
+  signOut: () => void;
   requestPersistence: () => void;
   install: () => void;
+  showGuide: () => void;
+}
+export interface AuthAccount {
+  id: string;
+  email: string;
+  signOut: () => Promise<void>;
 }
 export interface PageProps {
+  account?: AuthAccount;
+  storageMode?: "local" | "cloud";
   data: AppData;
   month: Month;
   setMonth: (month: Month) => void;

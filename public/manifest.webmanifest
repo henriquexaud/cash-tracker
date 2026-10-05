@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Cash Tracker",
   "short_name": "Cash Tracker",
-  "description": "Seu histórico salarial, orçamento e patrimônio em um lugar.",
+  "description": "Seu histórico salarial, orçamento e reserva em um lugar.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -30,13 +30,25 @@ import {
   validateGoal,
   validateMovement,
 } from "./domain/finance";
-import { createInitialData } from "./domain/seed";
-import type { AppData, Budget, Month } from "./domain/types";
+import { createEmptyData } from "./domain/empty";
+import { needsReview, validateSynchronizedEdit } from "./sync/document";
+import { PrivacyToggle, SensitiveText, usePrivacy } from "./privacy";
+import {
+  localRepository,
+  type DataRepository,
+  type SyncStatus,
+} from "./repository";
+import type {
+  AppData,
+  Budget,
+  Month,
+  Movement,
+  MovementKind,
+} from "./domain/types";
 import {
   exportBackup,
-  loadData,
+  loadData as loadLocalData,
   parseBackup,
-  saveData,
   validateBackup,
 } from "./storage";
 import { requestPersistence } from "./pwa";
@@ -50,8 +62,11 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
-import { SavingsHistoryForm } from "./components/SavingsHistoryForm";
-import { getSavingsHistoryPlan } from "./domain/savings-history";
+import {
+  QuickGuide,
+  rememberGuide,
+  shouldShowGuide,
+} from "./components/QuickGuide";
 import {
   DashboardPage,
   BudgetPage,
@@ -59,14 +74,14 @@ import {
   WealthPage,
   SettingsPage,
 } from "./Pages";
-import type { Actions, Page, PageProps } from "./ui-types";
+import type { Actions, AuthAccount, Page, PageProps } from "./ui-types";
 import { useTheme } from "./theme";
 
 const navigation: { id: Page; label: string; icon: typeof Wallet }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
   { id: "budget", label: "Orçamento", icon: ListFilter },
   { id: "history", label: "Histórico", icon: TrendingUp },
-  { id: "wealth", label: "Patrimônio", icon: Wallet },
+  { id: "wealth", label: "Reserva", icon: Wallet },
   { id: "settings", label: "Configurações", icon: Settings2 },
 ];
 const readPage = (): Page =>
@@ -93,13 +108,30 @@ function downloadBackup(data: AppData, prefix = "cash-tracker") {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export default function App() {
+export default function App({
+  repository = localRepository,
+  account,
+}: {
+  repository?: DataRepository;
+  account?: AuthAccount;
+}) {
+  const { load: loadData, save: saveData } = repository;
+  const privacy = usePrivacy();
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
+    repository.getStatus?.() ?? "local",
+  );
   const theme = useTheme();
   const [data, setData] = useState<AppData | null>(null);
+  const reviewRequired = useMemo(
+    () => (data ? needsReview(data) : false),
+    [data],
+  );
   const [loadError, setLoadError] = useState("");
   const [page, setPage] = useState<Page>(readPage);
   const [month, setMonth] = useState<Month>(currentMonth);
   const [modal, setModal] = useState<ReactNode>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const guideIdentity = account?.id ?? "local";
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{
     text: string;
@@ -126,12 +158,23 @@ export default function App() {
       const result = await lock(async () => {
         const existing = await loadData();
         if (existing) return existing;
-        const seed = getSavingsHistoryPlan(createInitialData()).next;
-        if (!seed) throw new Error("Não foi possível preparar os dados da planilha.");
+        let seed = createEmptyData();
+        if (import.meta.env.VITE_STORAGE_MODE === "local") {
+          const [{ createInitialData }, { getSavingsHistoryPlan }] =
+            await Promise.all([
+              import("./domain/seed"),
+              import("./domain/savings-history"),
+            ]);
+          const initial = getSavingsHistoryPlan(createInitialData()).next;
+          if (!initial)
+            throw new Error("Não foi possível preparar os dados da planilha.");
+          seed = initial;
+        }
         await saveData(seed);
         return seed;
       });
       setData(result);
+      setGuideOpen(shouldShowGuide(result, guideIdentity));
       if (navigator.storage?.persisted)
         setPersistent(await navigator.storage.persisted());
     } catch (error) {
@@ -152,7 +195,10 @@ export default function App() {
       setModal(null);
       window.scrollTo({ top: 0 });
     };
-    const onOnline = () => setOnline(navigator.onLine);
+    const onOnline = () => {
+      setOnline(navigator.onLine);
+      void repository.sync?.();
+    };
     const offline = () => setOfflineReady(true);
     const update = (e: Event) => {
       updateRegistration.current = (
@@ -175,23 +221,47 @@ export default function App() {
       }
     };
     if (typeof BroadcastChannel !== "undefined") {
-      channel.current = new BroadcastChannel("cash-tracker-changes");
+      channel.current = new BroadcastChannel(
+        `cash-tracker-changes-${account?.id ?? "local"}`,
+      );
       channel.current.onmessage = () => void refresh();
     }
+    const unsubscribe = repository.subscribe?.(() => {
+      setSyncStatus(repository.getStatus?.() ?? "local");
+      if (!savingRef.current && repository.getStatus?.() !== "syncing")
+        void refresh();
+    });
+    const syncTimer = repository.sync
+      ? setInterval(() => {
+          if (!document.hidden) void repository.sync?.();
+        }, 15000)
+      : undefined;
+    const syncOnFocus = () => {
+      void refresh();
+      void repository.sync?.();
+    };
+    const visibility = () => {
+      if (!document.hidden) syncOnFocus();
+    };
+    void repository.sync?.();
+    document.addEventListener("visibilitychange", visibility);
     window.addEventListener("hashchange", onHash);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOnline);
-    window.addEventListener("focus", refresh);
+    window.addEventListener("focus", syncOnFocus);
     window.addEventListener("cash-tracker-offline-ready", offline);
     window.addEventListener("cash-tracker-update", update);
     window.addEventListener("beforeinstallprompt", install);
     window.addEventListener("appinstalled", installed);
     return () => {
+      unsubscribe?.();
+      clearInterval(syncTimer);
+      document.removeEventListener("visibilitychange", visibility);
       channel.current?.close();
       window.removeEventListener("hashchange", onHash);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOnline);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("focus", syncOnFocus);
       window.removeEventListener("cash-tracker-offline-ready", offline);
       window.removeEventListener("cash-tracker-update", update);
       window.removeEventListener("beforeinstallprompt", install);
@@ -219,14 +289,18 @@ export default function App() {
             "Os dados locais não foram encontrados. Reabra o aplicativo antes de continuar.",
           );
         const candidate = transform(structuredClone(current));
-        validateBackup(candidate);
+        if (repository.mode === "cloud")
+          validateSynchronizedEdit(current, candidate);
+        else validateBackup(candidate);
         await saveData(candidate);
-        return candidate;
+        return repository.mode === "cloud"
+          ? ((await loadData()) ?? candidate)
+          : candidate;
       });
       setData(next);
       channel.current?.postMessage("saved");
       setNotice({ text: message });
-      return true;
+      return next;
     } catch (error) {
       setNotice({
         text:
@@ -242,6 +316,10 @@ export default function App() {
     }
   };
   const close = () => setModal(null);
+  const dismissGuide = () => {
+    rememberGuide(guideIdentity);
+    setGuideOpen(false);
+  };
   const commit = async (
     transform: (current: AppData) => AppData,
     message: string,
@@ -259,10 +337,17 @@ export default function App() {
     onConfirm: () => void,
     label = "Excluir",
     destructive = true,
+    sensitive = false,
   ) => {
     setModal(
-      <Modal title={title} onClose={close}>
-        <p className="modal-description">{description}</p>
+      <Modal title={title} onClose={close} sensitiveContent={sensitive}>
+        <p className="modal-description">
+          {sensitive ? (
+            <SensitiveText>{description}</SensitiveText>
+          ) : (
+            description
+          )}
+        </p>
         <div className="modal-footer">
           <button className="button secondary" onClick={close}>
             Cancelar
@@ -406,8 +491,57 @@ export default function App() {
       </div>
     );
 
+  const openMovement = (
+    movementData: AppData,
+    movement?: Movement,
+    kind: MovementKind = "contribution",
+  ) => {
+    setModal(
+      <MovementForm
+        data={movementData}
+        movement={movement}
+        initialKind={kind}
+        initialDate={month === currentMonth() ? today() : `${month}-01`}
+        onClose={close}
+        onSave={(m) =>
+          void commit((current) => {
+            const isLegacy = current.legacy.resolution?.movementId === m.id;
+            if (isLegacy && m.kind !== "opening")
+              throw new Error(
+                "O saldo confirmado da planilha deve permanecer como saldo inicial.",
+              );
+            const error = validateMovement(current, m, movement?.id);
+            if (error) throw new Error(error);
+            return {
+              ...current,
+              movements: [
+                ...current.movements.filter((row) => row.id !== m.id),
+                m,
+              ],
+              legacy: isLegacy
+                ? {
+                    ...current.legacy,
+                    resolution: {
+                      amount: m.amount,
+                      date: m.date,
+                      accountId: m.accountId,
+                      movementId: m.id,
+                    },
+                  }
+                : current.legacy,
+            };
+          }, "Movimentação registrada.")
+        }
+      />,
+    );
+  };
+
   const actions: Actions = {
     navigate,
+    showGuide: () => {
+      close();
+      setGuideOpen(true);
+    },
     editSalary: (salary, target = salary?.month ?? month) =>
       setModal(
         <SalaryForm
@@ -528,49 +662,34 @@ export default function App() {
         );
       else apply();
     },
-    editMovement: (movement, kind = "contribution") =>
-      setModal(
-        <MovementForm
-          data={data}
-          movement={movement}
-          initialKind={kind}
-          initialDate={month === currentMonth() ? today() : `${month}-01`}
-          onClose={close}
-          onSave={(m) =>
-            void commit((current) => {
-              const isLegacy = current.legacy.resolution?.movementId === m.id;
-              if (isLegacy && m.kind !== "opening")
-                throw new Error(
-                  "O saldo confirmado da planilha deve permanecer como saldo inicial.",
+    editMovement: (movement, kind = "contribution") => {
+      if (!data.accounts.length) {
+        setModal(
+          <AccountForm
+            description="Primeiro, dê um nome ao local onde você guarda o dinheiro. Depois, registre o valor."
+            onClose={close}
+            onSave={(newAccount) =>
+              void (async () => {
+                const next = await mutate(
+                  (current) => ({
+                    ...current,
+                    accounts: [...current.accounts, newAccount],
+                  }),
+                  "Local de reserva adicionado.",
                 );
-              const error = validateMovement(current, m, movement?.id);
-              if (error) throw new Error(error);
-              return {
-                ...current,
-                movements: [
-                  ...current.movements.filter((row) => row.id !== m.id),
-                  m,
-                ],
-                legacy: isLegacy
-                  ? {
-                      ...current.legacy,
-                      resolution: {
-                        amount: m.amount,
-                        date: m.date,
-                        accountId: m.accountId,
-                        movementId: m.id,
-                      },
-                    }
-                  : current.legacy,
-              };
-            }, "Movimentação registrada.")
-          }
-        />,
-      ),
+                if (next) openMovement(next, movement, kind);
+              })()
+            }
+          />,
+        );
+        return;
+      }
+      openMovement(data, movement, kind);
+    },
     removeMovement: (movement) =>
       confirm(
         "Excluir movimentação?",
-        `O lançamento de ${formatMoney(movement.amount)} será removido. O patrimônio será recalculado.`,
+        `O lançamento de ${formatMoney(movement.amount)} será removido. A reserva será recalculada.`,
         () =>
           void commit((current) => {
             const next = {
@@ -585,6 +704,9 @@ export default function App() {
               };
             return next;
           }, "Movimentação excluída."),
+        "Excluir",
+        true,
+        true,
       ),
     editGoal: (goal) =>
       setModal(
@@ -607,7 +729,7 @@ export default function App() {
     removeGoal: (goal) =>
       confirm(
         "Excluir objetivo?",
-        `A destinação para ${goal.name} será removida. O dinheiro continuará no patrimônio.`,
+        `A destinação para ${goal.name} será removida. O dinheiro continuará na reserva.`,
         () =>
           void commit(
             (current) => ({
@@ -616,6 +738,9 @@ export default function App() {
             }),
             "Objetivo excluído.",
           ),
+        "Excluir",
+        true,
+        true,
       ),
     addAccount: () =>
       setModal(
@@ -627,7 +752,7 @@ export default function App() {
                 ...current,
                 accounts: [...current.accounts, account],
               }),
-              "Local de patrimônio adicionado.",
+              "Local de reserva adicionado.",
             )
           }
         />,
@@ -650,6 +775,9 @@ export default function App() {
               accounts: current.accounts.filter((a) => a.id !== account.id),
             };
           }, "Local excluído."),
+        "Excluir",
+        true,
+        true,
       ),
     reviewLegacy: () =>
       setModal(
@@ -660,7 +788,7 @@ export default function App() {
             void commit((current) => {
               if (current.legacy.status !== "pending")
                 throw new Error(
-                  "O saldo da planilha já foi confirmado. Edite o saldo inicial no patrimônio.",
+                  "O saldo da planilha já foi confirmado. Edite o saldo inicial na reserva.",
                 );
               const error = validateMovement(current, movement);
               if (error) throw new Error(error);
@@ -682,26 +810,120 @@ export default function App() {
           }
         />,
       ),
-    importSavingsHistory: () =>
-      setModal(
-        <SavingsHistoryForm
-          data={data}
-          onClose={close}
-          onConfirm={() =>
-            commit((current) => {
-              const plan = getSavingsHistoryPlan(current);
-              if (plan.status !== "ready" || !plan.next)
-                throw new Error(
-                  plan.reason ??
-                    "O histórico já foi incluído ou os registros locais mudaram. Reabra a prévia antes de continuar.",
-                );
-              validateBackup(plan.next);
-              downloadBackup(current, "cash-tracker-antes-do-historico");
-              return plan.next;
-            }, "Histórico da planilha incluído. O backup anterior foi exportado.")
-          }
-        />,
-      ),
+    importSavingsHistory: () => {
+      if (import.meta.env.VITE_STORAGE_MODE === "local")
+        void (async () => {
+          const [{ SavingsHistoryForm }, { getSavingsHistoryPlan }] =
+            await Promise.all([
+              import("./components/SavingsHistoryForm"),
+              import("./domain/savings-history"),
+            ]);
+          setModal(
+            <SavingsHistoryForm
+              data={data}
+              onClose={close}
+              onConfirm={() =>
+                commit((current) => {
+                  const plan = getSavingsHistoryPlan(current);
+                  if (plan.status !== "ready" || !plan.next)
+                    throw new Error(
+                      plan.reason ??
+                        "O histórico não pode ser incluído novamente.",
+                    );
+                  downloadBackup(current, "cash-tracker-antes-do-historico");
+                  return plan.next;
+                }, "Histórico incluído. O backup anterior foi exportado.")
+              }
+            />,
+          );
+        })();
+    },
+    importLocal: () =>
+      void (async () => {
+        try {
+          const legacy = await loadLocalData();
+          if (!legacy)
+            throw new Error(
+              "Nenhum dado anterior foi encontrado neste navegador. Você também pode restaurar um backup.",
+            );
+          const hasRecords = (value: AppData) =>
+            value.salaries.length ||
+            value.budgets.length ||
+            value.movements.length ||
+            value.goals.length ||
+            value.accounts.length ||
+            value.budgetTemplate.length;
+          if (hasRecords(data))
+            throw new Error(
+              "Esta conta já possui registros. Exporte um backup e use a restauração caso queira substituí-los.",
+            );
+          setModal(
+            <Modal
+              title="Levar os dados para sua conta?"
+              onClose={close}
+              sensitiveContent
+            >
+              <p className="modal-description">
+                Os dados anteriores deste navegador têm {legacy.salaries.length}{" "}
+                salários e {legacy.movements.length} movimentações. Eles serão
+                vinculados a{" "}
+                <SensitiveText>{account?.email ?? "sua conta"}</SensitiveText>.
+              </p>
+              <p className="form-hint">
+                Uma cópia será exportada antes de importar. Confirme que estes
+                dados são seus.
+              </p>
+              <div className="modal-footer">
+                <button className="button secondary" onClick={close}>
+                  Cancelar
+                </button>
+                <button
+                  className="button primary"
+                  onClick={() =>
+                    void commit((current) => {
+                      if (hasRecords(current))
+                        throw new Error(
+                          "A conta recebeu novos registros. Reabra a importação.",
+                        );
+                      downloadBackup(legacy, "cash-tracker-antes-da-migracao");
+                      return legacy;
+                    }, "Dados vinculados à sua conta e salvos neste dispositivo.")
+                  }
+                >
+                  Salvar cópia e importar
+                </button>
+              </div>
+            </Modal>,
+          );
+        } catch (error) {
+          setNotice({
+            text:
+              error instanceof Error
+                ? error.message
+                : "Não foi possível importar os dados anteriores.",
+            error: true,
+          });
+        }
+      })(),
+    signOut: () => {
+      if (account)
+        confirm(
+          "Sair desta conta?",
+          "A cópia offline deste dispositivo será removida após sincronizar. Seus dados continuarão na conta.",
+          () =>
+            void account.signOut().catch((error) =>
+              setNotice({
+                text:
+                  error instanceof Error
+                    ? error.message
+                    : "Não foi possível sair.",
+                error: true,
+              }),
+            ),
+          "Sair",
+          false,
+        );
+    },
     backup: () =>
       void (async () => {
         const at = new Date().toISOString();
@@ -773,6 +995,8 @@ export default function App() {
     persistent,
     canInstall: !!installPrompt,
     theme,
+    account,
+    storageMode: repository.mode,
   };
   const CurrentPage = {
     dashboard: DashboardPage,
@@ -821,7 +1045,11 @@ export default function App() {
           <button className="sidebar-backup" onClick={actions.backup}>
             <ArrowDownToLine size={15} /> Exportar backup{" "}
           </button>
-          <p>Dados salvos neste dispositivo.</p>
+          <p>
+            {account
+              ? "Sua conta, disponível offline."
+              : "Dados salvos neste dispositivo."}
+          </p>
         </div>
       </aside>
       <div className="workspace">
@@ -834,9 +1062,19 @@ export default function App() {
               <span className={`status-dot ${!online ? "offline" : ""}`} />
               {saving
                 ? "Salvando…"
-                : online
-                  ? "Salvo neste dispositivo"
-                  : "Você está offline"}
+                : repository.mode === "cloud"
+                  ? {
+                      local: "Salvo neste dispositivo",
+                      offline: "Offline · salvo aqui",
+                      pending: "Aguardando envio",
+                      syncing: "Sincronizando…",
+                      synced: "Sincronizado",
+                      error: "Salvo aqui · envio pendente",
+                      review: "Revise os registros",
+                    }[syncStatus]
+                  : online
+                    ? "Salvo neste dispositivo"
+                    : "Offline · salvo aqui"}
             </span>
             <button
               type="button"
@@ -855,11 +1093,12 @@ export default function App() {
                 <Moon size={18} />
               )}
             </button>
+            <PrivacyToggle />
             <button
               className="icon-button topbar-help"
-              title="Sobre seus dados locais"
-              aria-label="Sobre seus dados locais"
-              onClick={() => navigate("settings")}
+              title="Guia rápido"
+              aria-label="Guia rápido"
+              onClick={actions.showGuide}
             >
               <CircleHelp size={18} />
             </button>
@@ -874,7 +1113,7 @@ export default function App() {
                     dashboard: "Visão geral",
                     budget: "Orçamento",
                     history: "Histórico",
-                    wealth: "Patrimônio",
+                    wealth: "Reserva",
                     settings: "Configurações",
                   }[page]
                 }
@@ -882,12 +1121,13 @@ export default function App() {
               <p>
                 {
                   {
-                    dashboard: "Salário, orçamento e dinheiro guardado.",
-                    budget: "Planeje seus gastos e sua reserva mensal.",
+                    dashboard:
+                      "Recebido, gastos aproximados e dinheiro guardado.",
+                    budget: "Ajuste uma estimativa dos gastos do mês.",
                     history:
                       "Salários e orçamentos, desde os primeiros registros.",
-                    wealth: "Contas, aportes, rendimentos e objetivos.",
-                    settings: "Aparência, backup e dados locais.",
+                    wealth: "Acompanhe o dinheiro que você guardou de fato.",
+                    settings: "Aparência, backup e armazenamento.",
                   }[page]
                 }
               </p>
@@ -954,17 +1194,61 @@ export default function App() {
               </button>
             </div>
           )}
+          {reviewRequired && (
+            <div className="inline-notice" role="alert">
+              <CircleHelp size={17} />
+              <span>
+                Edições simultâneas deixaram uma retirada ou objetivo acima do
+                saldo. Os registros foram preservados; revise-os em Reserva.
+              </span>
+              <button
+                className="text-button"
+                onClick={() => navigate("wealth")}
+              >
+                Revisar
+              </button>
+            </div>
+          )}
+          {(syncStatus === "error" || syncStatus === "pending") &&
+            repository.mode === "cloud" && (
+              <div className="inline-notice">
+                <span>
+                  Alterações salvas neste dispositivo. O envio será tentado
+                  novamente com conexão.
+                </span>
+                <button
+                  className="text-button"
+                  onClick={() => void repository.sync?.()}
+                >
+                  Sincronizar
+                </button>
+              </div>
+            )}
           <CurrentPage {...props} />
         </main>
       </div>
       {modal}
+      {guideOpen && !modal && (
+        <QuickGuide
+          onClose={dismissGuide}
+          onStart={() => {
+            dismissGuide();
+            setMonth(currentMonth());
+            actions.editSalary(undefined, currentMonth());
+          }}
+        />
+      )}
       {notice && (
         <div
           className={`toast ${notice.error ? "error" : ""}`}
           role={notice.error ? "alert" : "status"}
         >
           {notice.error ? <CircleHelp size={18} /> : <Check size={18} />}
-          <span>{notice.text}</span>
+          <span>
+            {notice.error && privacy.hidden
+              ? "Não foi possível concluir. Mostre os valores para conferir o aviso."
+              : notice.text}
+          </span>
           <button aria-label="Fechar aviso" onClick={() => setNotice(null)}>
             <X size={16} />
           </button>
@@ -988,17 +1272,26 @@ export default function App() {
             const restored = parseBackup(await file.text());
             const stats = salaryStats(restored.salaries);
             setModal(
-              <Modal title="Restaurar este backup?" onClose={close}>
+              <Modal
+                title="Restaurar este backup?"
+                onClose={close}
+                sensitiveContent
+              >
                 <p className="modal-description">
                   O arquivo contém{" "}
                   <strong>{restored.salaries.length} salários</strong>,{" "}
                   <strong>{restored.budgets.length} orçamentos</strong> e{" "}
                   <strong>{restored.movements.length} movimentações</strong>.
-                  Total recebido: <strong>{formatMoney(stats.total)}</strong>.
+                  Total recebido:{" "}
+                  <strong>
+                    <SensitiveText>{formatMoney(stats.total)}</SensitiveText>
+                  </strong>
+                  .
                 </p>
                 <div className="form-hint">
-                  O backup substituirá os dados deste dispositivo. Uma cópia dos
-                  dados atuais será exportada antes da substituição.
+                  O backup substituirá os dados atuais desta conta ou
+                  dispositivo. Uma cópia dos dados atuais será exportada antes
+                  da substituição.
                 </div>
                 <div className="modal-footer">
                   <button className="button secondary" onClick={close}>

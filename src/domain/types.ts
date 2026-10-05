@@ -43,7 +43,7 @@ export interface Goal {
   allocated: number;
 }
 export interface LegacyImport {
-  status: "pending" | "resolved";
+  status: "none" | "pending" | "resolved";
   source: string;
   capturedAt: string;
   movements: number[];

@@ -8,6 +8,7 @@ import {
   type PointerEvent,
 } from "react";
 import { formatMoney, monthLabel } from "../domain/finance";
+import { usePrivacy } from "../privacy";
 
 export interface ChartPoint {
   label: string;
@@ -38,6 +39,7 @@ export function Chart({
   color?: string;
   height?: number;
 }) {
+  const { hidden } = usePrivacy();
   const id = useId().replace(/:/g, "");
   const [activeMonth, setActiveMonth] = useState<string | null>(null);
   const foundIndex = points.findIndex((point) => point.month === activeMonth);
@@ -57,7 +59,13 @@ export function Chart({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [hasPoints]);
+  }, [hasPoints, hidden]);
+  if (hidden)
+    return (
+      <div className="chart-empty privacy-chart" role="status">
+        Gráfico oculto enquanto os valores estiverem protegidos.
+      </div>
+    );
   if (!points.length)
     return (
       <div className="chart-empty">
@@ -74,7 +82,9 @@ export function Chart({
   const selectedPoint = points[selectedIndex];
   const selectedLabel = `${monthLabel(selectedPoint.month, true)}: ${formatMoney(selectedPoint.value)}`;
   const selectPoint = (index: number) =>
-    setActiveMonth(points[Math.max(0, Math.min(points.length - 1, index))].month);
+    setActiveMonth(
+      points[Math.max(0, Math.min(points.length - 1, index))].month,
+    );
   const handleKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
     let nextIndex: number;
     switch (event.key) {
@@ -148,14 +158,19 @@ export function Chart({
       }}
     >
       <span id={`summary-${id}`} style={hiddenText}>
-        {points.length} registros. Primeiro valor {formatMoney(points[0].value)} e
-        último valor {formatMoney(points[points.length - 1].value)}.
+        {points.length} registros. Primeiro valor {formatMoney(points[0].value)}{" "}
+        e último valor {formatMoney(points[points.length - 1].value)}.
       </span>
       <span id={`instructions-${id}`} style={hiddenText}>
         Use as setas para explorar os meses, Home para o primeiro e End para o
         último. Também pode tocar no gráfico para consultar um valor.
       </span>
-      <span role="status" aria-live="polite" aria-atomic="true" style={hiddenText}>
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={hiddenText}
+      >
         {activeIndex !== null ? selectedLabel : ""}
       </span>
       {activeIndex !== null && (
