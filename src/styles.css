@@ -1196,6 +1196,10 @@ select {
 .empty-state .text-button {
   margin-top: 14px;
 }
+.empty-state .settings-actions {
+  justify-content: center;
+  column-gap: 24px;
+}
 
 .guide-steps {
   display: grid;

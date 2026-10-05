@@ -967,12 +967,22 @@ export function WealthPage({ data, month, actions }: PageProps) {
               {period === "month" ? "neste mês" : "confirmada"}
             </h3>
             <p>Registre aportes, retiradas e rendimentos.</p>
-            <button
-              className="text-button"
-              onClick={() => actions.editMovement()}
-            >
-              Registrar movimentação <Plus size={15} />
-            </button>
+            <div className="settings-actions">
+              {period === "month" && data.movements.length > 0 && (
+                <button
+                  className="text-button"
+                  onClick={() => setPeriod("all")}
+                >
+                  Ver todas as movimentações <ArrowRight size={15} />
+                </button>
+              )}
+              <button
+                className="text-button"
+                onClick={() => actions.editMovement()}
+              >
+                Registrar movimentação <Plus size={15} />
+              </button>
+            </div>
           </div>
         )}
       </section>
