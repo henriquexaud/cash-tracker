@@ -66,7 +66,7 @@ const instructions = {
   },
 } as const;
 
-export function InstallGuide({ onClose }: { onClose: () => void }) {
+export function InstallGuide({ onClose, storageMode = "cloud" }: { onClose: () => void; storageMode?: "local" | "cloud" }) {
   const [platform, setPlatform] = useState<Platform>(currentPlatform);
   const current = instructions[platform];
   const content = useRef<HTMLDivElement>(null);
@@ -74,7 +74,7 @@ export function InstallGuide({ onClose }: { onClose: () => void }) {
     if (content.current) content.current.scrollTop = 0;
   }, [platform]);
   return (
-    <Modal title="Instalar o Cash Tracker" description="Um atalho para abrir seu app, sem procurar o endereço." onClose={onClose} className="install-guide">
+    <Modal title="Instalar o Cash Tracker" description="Adicione o ícone ao celular ou computador para abrir o app direto." onClose={onClose} className="install-guide">
       <div className="install-platforms" role="group" aria-label="Dispositivo para instalar">
         {platforms.map(({ id, label, icon: Icon }) => (
           <button type="button" key={id} aria-pressed={platform === id} onClick={() => setPlatform(id)}>
@@ -90,7 +90,11 @@ export function InstallGuide({ onClose }: { onClose: () => void }) {
           ))}
         </ol>
         <p className="form-hint">{current.note}</p>
-        <div className="install-offline-note">Abra uma vez com internet e entre na sua conta. Quando o app indicar que está pronto para uso offline, você poderá consultar e editar sem conexão.</div>
+        <div className="install-data-note">
+          {storageMode === "cloud"
+            ? "Depois de instalar, abra com internet e entre com a mesma conta para acessar seus registros."
+            : "Antes de usar em outra instalação, exporte um backup para levar seus registros com você."}
+        </div>
       </div>
       <div className="modal-footer"><button type="button" className="button primary" onClick={onClose}>Entendi</button></div>
     </Modal>

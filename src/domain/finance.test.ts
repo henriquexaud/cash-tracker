@@ -88,6 +88,12 @@ describe("money in cents", () => {
     ["-32,01", -3_201],
     [" 66,99 ", 6_699],
     ["0", 0],
+    [",50", 50],
+    [".5", 50],
+    ["-R$ ,50", -50],
+    ["123,", 12300],
+    ["123.", 12300],
+    ["1.234,", 123400],
     ["90.071.992.547.409,91", Number.MAX_SAFE_INTEGER],
   ])("parses %s exactly", (text, amount) =>
     expect(parseMoney(text)).toBe(amount),
@@ -96,6 +102,10 @@ describe("money in cents", () => {
   it.each([
     "",
     "abc",
+    ",",
+    ".",
+    "R$",
+    "-,",
     "1e3",
     "NaN",
     "12,345",

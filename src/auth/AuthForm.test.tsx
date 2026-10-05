@@ -189,6 +189,14 @@ describe("acesso simples por e-mail e senha", () => {
     render(<AuthForm client={c as unknown as SupabaseClient} />);
     const input = screen.getByLabelText("Senha") as HTMLInputElement;
     expect(input.type).toBe("password");
+    expect(input.autocomplete).toBe("current-password");
+    expect(input.getAttribute("autocapitalize")).toBe("none");
+    expect(input.getAttribute("spellcheck")).toBe("false");
+    const email = screen.getByLabelText("E-mail") as HTMLInputElement;
+    expect(email.type).toBe("email");
+    expect(email.inputMode).toBe("email");
+    expect(email.autocomplete).toBe("username");
+    expect(email.getAttribute("autocapitalize")).toBe("none");
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "test@example.com" },
     });

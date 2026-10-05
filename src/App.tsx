@@ -130,7 +130,6 @@ export default function App({
     text: string;
     error?: boolean;
   } | null>(null);
-  const [online, setOnline] = useState(navigator.onLine);
   const [offlineReady, setOfflineReady] = useState(
     !!navigator.serviceWorker?.controller,
   );
@@ -177,7 +176,6 @@ export default function App({
       window.scrollTo({ top: 0 });
     };
     const onOnline = () => {
-      setOnline(navigator.onLine);
       void repository.sync?.();
     };
     const offline = () => setOfflineReady(true);
@@ -788,7 +786,7 @@ export default function App({
       if (account)
         confirm(
           "Sair desta conta?",
-          "A cópia offline deste dispositivo será removida após sincronizar. Seus dados continuarão na conta.",
+          "Seus registros continuarão na sua conta. Para usar o app novamente neste dispositivo, entre com internet.",
           () =>
             void account.signOut().catch((error) =>
               setNotice({
@@ -827,17 +825,17 @@ export default function App({
           setPersistent(result);
           setNotice({
             text: result
-              ? "Armazenamento persistente ativado."
-              : "O navegador gerencia a proteção dos dados. Mantenha seus backups atualizados.",
+              ? "Proteção contra limpeza automática ativada."
+              : "O navegador não confirmou a proteção. Seus registros continuam salvos; mantenha uma cópia de segurança.",
           });
         })
         .catch(() =>
           setNotice({
-            text: "Não foi possível solicitar proteção do armazenamento.",
+            text: "Não foi possível ativar a proteção. Seus registros continuam salvos.",
             error: true,
           }),
         ),
-    showInstallGuide: () => setModal(<InstallGuide onClose={close} />),
+    showInstallGuide: () => setModal(<InstallGuide storageMode={repository.mode} onClose={close} />),
     install: () => {
       if (installPrompt)
         void installPrompt.prompt()
@@ -845,9 +843,9 @@ export default function App({
           .then(() => setInstallPrompt(null))
           .catch(() => {
             setInstallPrompt(null);
-            setModal(<InstallGuide onClose={close} />);
+            setModal(<InstallGuide storageMode={repository.mode} onClose={close} />);
           });
-      else setModal(<InstallGuide onClose={close} />);
+      else setModal(<InstallGuide storageMode={repository.mode} onClose={close} />);
     },
   };
 
@@ -870,21 +868,6 @@ export default function App({
     wealth: WealthPage,
     settings: SettingsPage,
   }[page];
-  const saveStatusText = saving
-    ? "Salvando…"
-    : repository.mode === "cloud"
-      ? {
-          local: "Salvo neste dispositivo",
-          offline: "Offline · salvo aqui",
-          pending: "Aguardando envio",
-          syncing: "Sincronizando…",
-          synced: "Sincronizado",
-          error: "Salvo aqui · envio pendente",
-          review: "Revise os registros",
-        }[syncStatus]
-      : online
-        ? "Salvo neste dispositivo"
-        : "Offline · salvo aqui";
   const monthChange = (newMonth: string) => {
     if (/^\d{4}-(0[1-9]|1[0-2])$/.test(newMonth)) {
       setMonth(newMonth);
@@ -933,10 +916,7 @@ export default function App({
             Cash Tracker
           </a>
           <div className="topbar-actions">
-            <span className="save-status" title={saveStatusText}>
-              <span className={`status-dot ${!online ? "offline" : ""}`} />
-              <span className="save-status-text">{saveStatusText}</span>
-            </span>
+            <PrivacyToggle />
             <button
               type="button"
               className="icon-button theme-toggle"
@@ -954,7 +934,6 @@ export default function App({
                 <Moon size={18} />
               )}
             </button>
-            <PrivacyToggle />
           </div>
         </header>
         <main id="main-content" className={`main-content page-${page}`}>

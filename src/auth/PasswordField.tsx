@@ -24,6 +24,9 @@ export function PasswordField({
           id={id}
           className="input"
           type={visible ? "text" : "password"}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
         />
         <button
           className="icon-button"

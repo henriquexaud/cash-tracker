@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App";
-import { BudgetPage } from "./Pages";
-import { MovementForm } from "./components/EntryForms";
+import { BudgetPage, SettingsPage } from "./Pages";
+import { InstallGuide } from "./components/InstallGuide";
+import { BudgetItemForm, GoalForm, LegacyForm, MovementForm, ReservePlanForm, SalaryForm } from "./components/EntryForms";
 import { createEmptyData } from "./domain/empty";
 import { currentMonth, shiftMonth } from "./domain/finance";
 import { PrivacyContext, privacySettings } from "./privacy";
@@ -151,5 +152,176 @@ describe("ordenação dos gastos", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fixos" }));
     expect(names()).toEqual(["Aluguel", "Internet"]);
     expect(data).toEqual(original);
+  });
+});
+
+describe("cabeçalho e configurações", () => {
+  it("mostra apenas os controles de valores e tema, nessa ordem", async () => {
+    setup(createEmptyData());
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    const header = document.querySelector(".topbar") as HTMLElement;
+    const buttons = within(header).getAllByRole("button");
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute("aria-label")).toMatch(/valores sensíveis/);
+    expect(buttons[1].getAttribute("aria-label")).toMatch(/Ativar tema/);
+    expect(within(header).queryByText(/Salvo|Sincroniz|Offline|Salvando/)).toBeNull();
+  });
+
+  it("preserva o aviso e a ação para alterações pendentes", async () => {
+    const sync = vi.fn(async () => {});
+    const repository: DataRepository = {
+      mode: "cloud", load: vi.fn(async () => createEmptyData()), save: vi.fn(async () => {}),
+      sync, getStatus: () => "pending",
+    };
+    render(<App repository={repository} />);
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    expect(screen.getByText(/Alterações salvas neste dispositivo/)).toBeTruthy();
+    sync.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Sincronizar" }));
+    expect(sync).toHaveBeenCalledOnce();
+  });
+
+  it.each(["local", "cloud"] as const)("explica a gravação %s e preserva as ações de backup e instalação", (storageMode) => {
+    const backup = vi.fn(), restore = vi.fn(), install = vi.fn(), instructions = vi.fn(), protection = vi.fn();
+    const actions = {
+      backup, restore, install, showInstallGuide: instructions, requestPersistence: protection,
+      signOut: vi.fn(),
+    } as unknown as Actions;
+    render(<SettingsPage data={createEmptyData()} month={currentMonth()} actions={actions}
+      setMonth={vi.fn()} offlineReady persistent={false} canInstall storageMode={storageMode}
+      account={storageMode === "cloud" ? { id: "test", email: "test@example.com", signOut: vi.fn() } : undefined}
+      theme={{ preference: "light", resolvedTheme: "light", setPreference: vi.fn() }} />);
+    const accountSection = screen.getByRole("heading", { name: "Conta e backup" }).closest("section") as HTMLElement;
+    const deviceSection = screen.getByRole("heading", { name: "App no seu dispositivo" }).closest("section") as HTMLElement;
+    expect(within(accountSection).getByText(storageMode === "cloud"
+      ? "Seus registros ficam salvos na sua conta, mesmo depois de fechar o app."
+      : "Seus registros ficam salvos neste navegador, mesmo depois de fechar o app.")).toBeTruthy();
+    expect(within(accountSection).getByText("Sobre seus dados")).toBeTruthy();
+    expect(within(deviceSection).queryByText("Sobre seus dados")).toBeNull();
+    expect(within(deviceSection).queryByText(/sem internet|offline|versão publicada/)).toBeNull();
+    if (storageMode === "cloud") {
+      expect(within(accountSection).getByText(/backup é uma cópia extra e opcional/)).toBeTruthy();
+      expect(within(deviceSection).queryByText(/exporte um backup/)).toBeNull();
+    }
+    const installButtons = within(deviceSection).getAllByRole("button");
+    expect(installButtons.map(button => button.textContent)).toEqual(["Ver instruções", "Instalar app"]);
+    fireEvent.click(installButtons[0]);
+    fireEvent.click(installButtons[1]);
+    fireEvent.click(within(accountSection).getByRole("button", { name: "Exportar backup" }));
+    fireEvent.click(within(accountSection).getByRole("button", { name: "Restaurar backup" }));
+    fireEvent.click(within(accountSection).getByText("Sobre seus dados"));
+    fireEvent.click(within(accountSection).getByRole("button", { name: "Proteger dados neste dispositivo" }));
+    for (const action of [backup, restore, install, instructions, protection]) expect(action).toHaveBeenCalledOnce();
+  });
+
+  it("não pede login nas instruções do modo local", () => {
+    render(<InstallGuide storageMode="local" onClose={vi.fn()} />);
+    expect(screen.getByText(/exporte um backup para levar seus registros/)).toBeTruthy();
+    expect(screen.queryByText(/entre com a mesma conta/)).toBeNull();
+    expect(screen.queryByText(/Disponível sem internet|sem conexão/)).toBeNull();
+  });
+});
+
+describe("entrada de valores", () => {
+  it.each([
+    ["1234,5", "1.234,50", 123450],
+    ["1234.56", "1.234,56", 123456],
+    ["R$\u00a01.234,56", "1.234,56", 123456],
+    [",50", "0,50", 50],
+    [".50", "0,50", 50],
+    ["123,", "123,00", 12300],
+    ["0", "0,00", 0],
+  ])("formata %s ao sair do campo e salva os centavos exatos", (typed, formatted, cents) => {
+    const onSave = vi.fn();
+    render(<SalaryForm month={currentMonth()} onSave={onSave} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Valor recebido (R$)") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: typed } });
+    expect(input.value).toBe(typed);
+    fireEvent.blur(input);
+    expect(input.value).toBe(formatted);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar salário" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ amount: cents }));
+  });
+
+  it.each(["", "12,345", "1e3", "90.071.992.547.409,92", "-20"])("não descarta nem salva um salário inválido (%s)", (typed) => {
+    const onSave = vi.fn();
+    render(<SalaryForm month={currentMonth()} onSave={onSave} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Valor recebido (R$)") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: typed } });
+    fireEvent.blur(input);
+    expect(input.value).toBe(typed === "-20" ? "-20,00" : typed);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar salário" }));
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("seleciona o valor sugerido para substituição e não marca um aporte intacto como editado", () => {
+    render(<MovementForm data={movementData()} initialDate="2026-10-05" onSave={vi.fn()} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Valor (R$)") as HTMLInputElement;
+    fireEvent.focus(input);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(input.value.length);
+    fireEvent.blur(input);
+    fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-09-05" } });
+    expect(input.value).toBe("800,00");
+  });
+
+  it("mantém a formatação compartilhada em gastos, planejamento, objetivos e saldo legado", () => {
+    const cases = [
+      { form: <BudgetItemForm onSave={vi.fn()} onClose={vi.fn()} />, label: "Valor mensal (R$)" },
+      { form: <ReservePlanForm value={0} onSave={vi.fn()} onClose={vi.fn()} />, label: "Valor planejado (R$)" },
+      { form: <GoalForm data={movementData()} onSave={vi.fn()} onClose={vi.fn()} />, label: "Meta (R$)" },
+      { form: <GoalForm data={movementData()} onSave={vi.fn()} onClose={vi.fn()} />, label: "Valor já reservado (R$)" },
+      { form: <LegacyForm data={movementData()} onSave={vi.fn()} onClose={vi.fn()} />, label: "Saldo exato conferido (R$)" },
+    ];
+    for (const { form, label } of cases) {
+      render(form);
+      const input = screen.getByLabelText(label) as HTMLInputElement;
+      expect(input.type).toBe("text");
+      expect(input.inputMode).toBe("decimal");
+      expect(input.required).toBe(true);
+      fireEvent.change(input, { target: { value: "23,4" } });
+      fireEvent.blur(input);
+      expect(input.value).toBe("23,40");
+      cleanup();
+    }
+  });
+
+  it("permite digitar o sinal de perdas e preserva os centavos do rendimento negativo", () => {
+    const data = movementData();
+    data.movements = [{ id: "opening", kind: "opening", accountId: "account", date: "2026-10-01", amount: 100000, note: "" }];
+    const onSave = vi.fn();
+    render(<MovementForm data={data} initialKind="return" initialDate="2026-10-05" onSave={onSave} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Valor (R$)") as HTMLInputElement;
+    expect(input.inputMode).toBe("text");
+    fireEvent.change(input, { target: { value: "-12.5" } });
+    fireEvent.blur(input);
+    expect(input.value).toBe("-12,50");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rendimento" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ amount: -1250, kind: "return" }));
+    fireEvent.change(screen.getByLabelText("Tipo de movimentação"), { target: { value: "contribution" } });
+    expect(input.inputMode).toBe("decimal");
+  });
+
+  it.each(["1e2", "0x10", "2,0", "1.5", "0"])("rejeita repetições que não são inteiros positivos (%s)", (factor) => {
+    const onSave = vi.fn();
+    render(<BudgetItemForm onSave={onSave} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Nome do gasto"), { target: { value: "Transporte" } });
+    fireEvent.change(screen.getByLabelText("Valor mensal (R$)"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Quantidade"), { target: { value: factor } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar gasto" }));
+    expect(screen.getByRole("alert").textContent).toContain("quantidade inteira");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("salva a quantidade inteira e o total esperado", () => {
+    const onSave = vi.fn();
+    render(<BudgetItemForm onSave={onSave} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Nome do gasto"), { target: { value: "Transporte" } });
+    fireEvent.change(screen.getByLabelText("Valor mensal (R$)"), { target: { value: "2,50" } });
+    fireEvent.change(screen.getByLabelText("Quantidade"), { target: { value: "30" } });
+    expect(screen.getByText(/75,00/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar gasto" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ unitAmount: 250, factor: 30 }));
   });
 });

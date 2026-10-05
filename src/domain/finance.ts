@@ -42,12 +42,13 @@ export function parseMoney(text: string): number | null {
   const sign = value.startsWith("-") ? -1 : 1;
   value = value.replace(/^[+-]/, "");
   if (!value || /[^\d.,]/.test(value)) return null;
+  if (/^[.,]\d{1,2}$/.test(value)) value = `0${value}`;
 
   let whole: string;
   let decimal = "";
   if (value.includes(",")) {
     const parts = value.split(",");
-    if (parts.length !== 2 || !/^\d{1,2}$/.test(parts[1])) return null;
+    if (parts.length !== 2 || !/^\d{0,2}$/.test(parts[1])) return null;
     if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+)$/.test(parts[0])) return null;
     whole = parts[0].replaceAll(".", "");
     decimal = parts[1];
@@ -56,7 +57,7 @@ export function parseMoney(text: string): number | null {
   } else {
     const parts = value.split(".");
     if (parts.length > 2 || !/^\d+$/.test(parts[0])) return null;
-    if (parts.length === 2 && !/^\d{1,2}$/.test(parts[1])) return null;
+    if (parts.length === 2 && !/^\d{0,2}$/.test(parts[1])) return null;
     whole = parts[0];
     decimal = parts[1] ?? "";
   }

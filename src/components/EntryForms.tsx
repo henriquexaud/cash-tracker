@@ -113,6 +113,9 @@ function MoneyField({
   id,
   hint,
   autoFocus = false,
+  allowNegative = false,
+  name = "amount",
+  enterKeyHint = "next",
 }: {
   label: string;
   value: string;
@@ -120,18 +123,35 @@ function MoneyField({
   id: string;
   hint?: string;
   autoFocus?: boolean;
+  allowNegative?: boolean;
+  name?: string;
+  enterKeyHint?: "next" | "done";
 }) {
   return (
     <Field label={label} id={id} hint={hint}>
       <input
         className="input money-input"
         id={id}
+        name={name}
         type="text"
-        inputMode="decimal"
+        inputMode={allowNegative ? "text" : "decimal"}
+        enterKeyHint={enterKeyHint}
         autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        required
         placeholder="0,00"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onFocus={(event) => event.currentTarget.select()}
+        onBlur={(event) => {
+          const amount = parsedAmount(event.currentTarget.value);
+          if (amount !== null) {
+            const formatted = moneyText(amount);
+            if (formatted !== value) onChange(formatted);
+          }
+        }}
         aria-describedby={hint ? `${id}-hint` : undefined}
         data-autofocus={autoFocus ? "" : undefined}
       />
@@ -187,6 +207,7 @@ export function SalaryForm({
           <MoneyField
             id={`${id}-amount`}
             label="Valor recebido (R$)"
+            enterKeyHint="done"
             value={amount}
             onChange={setAmount}
             autoFocus
@@ -219,7 +240,7 @@ export function BudgetItemForm({
   const [factor, setFactor] = useState(String(item?.factor ?? 1));
   const [error, setError] = useFormError(id);
   const unitAmount = parsedAmount(amount);
-  const numericFactor = Number(factor.replace(",", "."));
+  const numericFactor = /^\d+$/.test(factor.trim()) ? Number(factor) : NaN;
   const monthlyAmount =
     unitAmount !== null &&
     unitAmount >= 0 &&
@@ -270,6 +291,12 @@ export function BudgetItemForm({
             <input
               className="input"
               id={`${id}-name`}
+              name="name"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              enterKeyHint="next"
+              required
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={100}
@@ -334,8 +361,14 @@ export function BudgetItemForm({
               <input
                 className="input"
                 id={`${id}-factor`}
+                name="factor"
                 type="text"
                 inputMode="numeric"
+                pattern="[0-9]+"
+                enterKeyHint="done"
+                autoComplete="off"
+                spellCheck={false}
+                required
                 value={factor}
                 onChange={(event) => setFactor(event.target.value)}
                 aria-describedby={`${id}-factor-hint`}
@@ -389,6 +422,7 @@ export function ReservePlanForm({
           <MoneyField
             id={`${id}-amount`}
             label="Valor planejado (R$)"
+            enterKeyHint="done"
             value={amount}
             onChange={setAmount}
             autoFocus
@@ -490,6 +524,7 @@ export function MovementForm({
           <MoneyField
             id={`${id}-amount`}
             label="Valor (R$)"
+            allowNegative={kind === "return"}
             value={amount}
             onChange={(value) => {
               setAmount(value);
@@ -557,6 +592,8 @@ export function MovementForm({
             <input
               className="input"
               type={monthlyDate ? "month" : "date"}
+              name="date"
+              required
               id={`${id}-date`}
               value={date}
               onChange={(event) => {
@@ -573,6 +610,8 @@ export function MovementForm({
               <textarea
                 className="input"
                 id={`${id}-note`}
+                name="note"
+                autoCapitalize="sentences"
                 rows={2}
                 maxLength={500}
                 value={note}
@@ -665,6 +704,12 @@ export function GoalForm({
             <input
               className="input"
               id={`${id}-name`}
+              name="name"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              enterKeyHint="next"
+              required
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={100}
@@ -692,12 +737,15 @@ export function GoalForm({
           <MoneyField
             id={`${id}-target`}
             label="Meta (R$)"
+            name="target"
             value={target}
             onChange={setTarget}
           />
           <MoneyField
             id={`${id}-allocated`}
             label="Valor já reservado (R$)"
+            name="allocated"
+            enterKeyHint="done"
             value={allocated}
             onChange={setAllocated}
             hint="Este valor destina dinheiro que já existe na conta e não cria um novo aporte."
@@ -753,6 +801,12 @@ export function AccountForm({
             <input
               className="input"
               id={`${id}-name`}
+              name="name"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              enterKeyHint="done"
+              required
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={100}
@@ -866,6 +920,8 @@ export function LegacyForm({
             <input
               className="input"
               type="date"
+              name="date"
+              required
               id={`${id}-date`}
               value={date}
               onChange={(event) => setDate(event.target.value)}

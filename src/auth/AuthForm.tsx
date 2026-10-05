@@ -170,6 +170,12 @@ export function AuthForm({
               <input
                 className="input"
                 type="email"
+                name="email"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint={mode === "reset" || mode === "confirm" ? "done" : "next"}
                 autoComplete="username"
                 required
                 disabled={busy}
@@ -184,6 +190,8 @@ export function AuthForm({
             <PasswordField
               key={mode}
               label={mode === "recovery" ? "Nova senha" : "Senha"}
+              name="password"
+              enterKeyHint={needsConfirmation ? "next" : "done"}
               visibilityLabel={mode === "recovery" ? "nova senha" : "senha"}
               autoFocus={mode === "recovery"}
               autoComplete={
@@ -206,6 +214,8 @@ export function AuthForm({
               <PasswordField
                 key={`${mode}-confirmation`}
                 label="Confirmar senha"
+                name="password-confirmation"
+                enterKeyHint="done"
                 visibilityLabel="confirmação da senha"
                 inputRef={confirmationRef}
                 autoComplete="new-password"

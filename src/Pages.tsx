@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   Building2,
   CalendarDays,
-  Check,
   ChevronRight,
   Cloud,
   Copy,
@@ -1080,7 +1079,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
 }
 
 export function SettingsPage({
-  data, actions, offlineReady, persistent, canInstall, theme, account, storageMode,
+  data, actions, persistent, canInstall, theme, account, storageMode,
 }: PageProps) {
   const { protect } = usePrivacy();
   const installed = useInstalledApp();
@@ -1097,60 +1096,78 @@ export function SettingsPage({
       <section className="panel settings-block" aria-labelledby="settings-data-title">
         <div className="settings-section-heading">
           <ShieldCheck size={20} aria-hidden="true" />
-          <div><h2 id="settings-data-title">Conta e backup</h2><p>{storageMode === "cloud" ? "Seus registros são privados e vinculados à sua conta." : "Seus registros ficam neste navegador."}</p></div>
+          <div>
+            <h2 id="settings-data-title">Conta e backup</h2>
+            <p>{storageMode === "cloud"
+              ? "Seus registros ficam salvos na sua conta, mesmo depois de fechar o app."
+              : "Seus registros ficam salvos neste navegador, mesmo depois de fechar o app."}</p>
+          </div>
         </div>
         {account && (
           <div className="settings-row">
-            <div className="settings-row-copy"><h3>Sua conta</h3><p className="settings-email">{protect(account.email)}</p><p>Entre com a mesma conta para acessar em outro dispositivo.</p></div>
+            <div className="settings-row-copy">
+              <h3>Sua conta</h3>
+              <p className="settings-email">{protect(account.email)}</p>
+              <p>Entre com a mesma conta para acessar seus registros em outro celular ou computador. As alterações aparecem quando houver internet.</p>
+            </div>
             <button className="button secondary" onClick={actions.signOut}>Sair da conta</button>
           </div>
         )}
         <div className="settings-row settings-backup-row">
           <div className="settings-row-copy">
-            <h3>Cópia de segurança</h3><p>Guarde um arquivo com todos os seus registros ou recupere um backup.</p>
+            <h3>Cópia de segurança</h3>
+            <p>{storageMode === "cloud"
+              ? "Seus registros já ficam salvos na conta. O backup é uma cópia extra e opcional, para guardar em um arquivo."
+              : "Baixe um arquivo com seus registros para guardar uma cópia extra. Para recuperar uma cópia anterior, use Restaurar backup."}</p>
             <span className="settings-backup-date">{data.preferences.lastBackupAt
-              ? `Última exportação: ${new Date(data.preferences.lastBackupAt).toLocaleString("pt-BR")}`
-              : "Nenhum arquivo exportado ainda."}</span>
+              ? `Último backup: ${new Date(data.preferences.lastBackupAt).toLocaleString("pt-BR")}`
+              : "Você ainda não exportou uma cópia."}</span>
           </div>
           <div className="settings-row-actions">
             <button className="button primary" onClick={actions.backup}><Download size={16} /> Exportar backup</button>
             <button className="button secondary" onClick={actions.restore}>Restaurar backup</button>
           </div>
         </div>
-        <p className="settings-detail-note">O arquivo contém os valores reais, mesmo com o olho fechado. Restaurar substitui os registros atuais após sua confirmação.</p>
+        <p className="settings-detail-note">Guarde o arquivo em um lugar seguro: ele inclui os valores, mesmo quando estão ocultos no app. Restaurar um backup substitui os registros atuais e pede sua confirmação.</p>
+        <details className="settings-storage-details">
+          <summary>Sobre seus dados <ChevronRight size={16} aria-hidden="true" /></summary>
+          <div>
+            <p>{storageMode === "cloud"
+              ? "Você pode continuar registrando sem internet neste dispositivo. Ao voltar a conexão, suas alterações são atualizadas na conta. Em um novo dispositivo, entre com internet antes de usar o app sem conexão."
+              : "Os registros deste modo ficam apenas neste navegador. Para levá-los a outro celular ou computador, exporte um backup e restaure a cópia lá."}</p>
+            <p>{storageMode === "cloud"
+              ? "Se apagar os dados do navegador, você poderá recuperar o que já foi enviado à conta. Alterações feitas sem internet podem se perder; conecte-se antes de limpar."
+              : "Apagar os dados deste navegador remove seus registros. Antes de limpar, exporte uma cópia de segurança."}</p>
+            <p>{persistent
+              ? "A proteção contra limpeza automática está ativada neste navegador. Ela não impede que você apague os dados manualmente."
+              : "Você pode pedir ao navegador para manter seus registros quando ele precisar liberar espaço."}</p>
+            {!persistent && <button className="text-button" onClick={actions.requestPersistence}>Proteger dados neste dispositivo <ArrowRight size={14} /></button>}
+          </div>
+        </details>
       </section>
 
       <section className="panel settings-block" aria-labelledby="settings-device-title">
         <div className="settings-section-heading">
           <Smartphone size={20} aria-hidden="true" />
-          <div><h2 id="settings-device-title">App no seu dispositivo</h2><p>Abra direto pela tela de início ou pelo atalho do computador.</p></div>
+          <div><h2 id="settings-device-title">App no seu dispositivo</h2><p>Tenha um ícone do Cash Tracker no celular ou computador.</p></div>
         </div>
         <div className="settings-row settings-install-row">
           <div className="settings-row-copy">
-            <h3>{installed ? "Instalado neste dispositivo" : "Tenha o Cash Tracker à mão"}</h3>
-            <p>{installed ? "Você pode continuar usando o app por esta janela." : "Instale pelo navegador. Não precisa baixar pela loja de aplicativos."}</p>
-            <span className={`settings-offline-status ${offlineReady ? "ready" : ""}`} role="status">
-              {offlineReady ? <Check size={14} aria-hidden="true" /> : <Wifi size={14} aria-hidden="true" />}
-              {offlineReady ? "Pronto para usar offline" : import.meta.env.DEV ? "Uso offline disponível na versão publicada" : "Preparando o uso offline"}
-            </span>
+            <h3>{installed ? "Instalado neste dispositivo" : "Abra direto pelo ícone do app"}</h3>
+            <p>{installed
+              ? "Abra o Cash Tracker pelo ícone na tela inicial ou no computador. Você também pode continuar usando por esta janela."
+              : "A instalação adiciona um ícone à tela inicial ou ao computador. Não precisa baixar pela loja de aplicativos."}</p>
+            <p>{storageMode === "cloud"
+              ? "Instalar não muda sua conta: entre com o mesmo e-mail para acessar seus registros."
+              : "Antes de usar em outro navegador ou instalação, exporte um backup para levar seus registros com você."}</p>
           </div>
           <div className="settings-row-actions">
+            {(installed || canInstall) && <button className="text-button" onClick={actions.showInstallGuide}>Ver instruções</button>}
             {!installed && <button className="button secondary" onClick={actions.install}>
               {canInstall ? "Instalar app" : "Como instalar"}<ArrowUpRight size={16} />
             </button>}
-            {(installed || canInstall) && <button className="text-button" onClick={actions.showInstallGuide}>Ver instruções</button>}
           </div>
         </div>
-        <details className="settings-storage-details">
-          <summary>Uso offline e armazenamento <ChevronRight size={16} aria-hidden="true" /></summary>
-          <div>
-            <p>{storageMode === "cloud"
-              ? "Após preparar este dispositivo com internet, você pode consultar e editar offline. As alterações são enviadas ao reconectar; a última edição do mesmo registro prevalece."
-              : "Após preparar o app com internet, seus registros ficam disponíveis offline neste navegador. Use um backup para levá-los a outro dispositivo."}</p>
-            <p>{persistent ? "O navegador concedeu proteção contra limpezas automáticas." : "Você pode pedir ao navegador para manter os dados ao liberar espaço."} Apagar os dados do navegador manualmente remove a cópia deste dispositivo.</p>
-            {!persistent && <button className="text-button" onClick={actions.requestPersistence}>Solicitar proteção contra limpeza <ArrowRight size={14} /></button>}
-          </div>
-        </details>
       </section>
     </div>
   );

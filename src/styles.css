@@ -271,10 +271,11 @@ textarea {
   margin-left: 220px;
 }
 .topbar {
+  --topbar-control-spacing: 6px;
   height: 58px;
   display: flex;
   align-items: center;
-  padding: 0 36px;
+  padding: 0 var(--topbar-control-spacing) 0 36px;
 }
 .topbar-brand {
   display: none;
@@ -282,26 +283,12 @@ textarea {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--topbar-control-spacing);
   margin-left: auto;
 }
-.save-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.status-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-green);
-  flex-shrink: 0;
-}
-.status-dot.offline {
-  background: var(--warning);
+.topbar-actions .privacy-toggle {
+  width: 44px;
+  height: 44px;
 }
 .main-content {
   max-width: 1260px;
@@ -1604,6 +1591,7 @@ select {
 .settings-section-heading h2 { font-size: 17px; line-height: 1.5; }
 .settings-section-heading p { font-size: 13px; line-height: 1.7; color: var(--muted); margin-top: 4px; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 0; border-bottom: 1px solid var(--border-soft); }
+.settings-row.settings-install-row { border-bottom: 0; padding-bottom: 0; }
 .settings-section-heading + .settings-row { margin-top: 6px; }
 .settings-row-copy { flex: 1; min-width: 0; }
 .settings-row h3 { font-size: 14px; line-height: 1.6; font-weight: 550; }
@@ -1614,8 +1602,6 @@ select {
 .settings-row-actions .button { white-space: nowrap; }
 .settings-backup-date { display: block; font-size: 12px; line-height: 1.6; margin-top: 10px; color: var(--muted); }
 .settings-detail-note { font-size: 12px; line-height: 1.7; color: var(--muted); margin-top: 16px; max-width: 680px; }
-.settings-offline-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--muted); }
-.settings-offline-status.ready { color: var(--green); }
 .settings-storage-details { margin-top: 18px; }
 .settings-storage-details summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; min-height: 36px; font-size: 13px; color: var(--muted); }
 .settings-storage-details summary::-webkit-details-marker { display: none; }
@@ -1636,7 +1622,7 @@ select {
 .install-guide .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .install-guide .modal-footer { flex-shrink: 0; }
 .install-content { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
-.install-offline-note { padding: 13px 15px; border-radius: 8px; background: var(--green-light); color: var(--green); font-size: 12px; line-height: 1.8; margin-top: 20px; }
+.install-data-note { padding: 13px 15px; border-radius: 8px; background: var(--green-light); color: var(--green); font-size: 12px; line-height: 1.8; margin-top: 20px; }
 .install-platforms { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 22px; }
 .install-platforms button { display: flex; justify-content: center; align-items: center; gap: 7px; border: 1px solid var(--border-control); background: var(--surface); color: var(--muted); border-radius: 8px; min-height: 44px; font-size: 12px; padding: 8px; }
 .install-platforms button[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-light); }
@@ -1920,7 +1906,7 @@ textarea.input {
     padding-right: 26px;
   }
   .topbar {
-    padding: 0 26px;
+    padding-left: 26px;
   }
   .metric {
     padding: 20px 16px;
@@ -2012,7 +1998,7 @@ textarea.input {
     min-height: 58px;
     height: auto;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 10px var(--topbar-control-spacing) 10px 20px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
@@ -2023,12 +2009,6 @@ textarea.input {
     font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.5px;
-  }
-  .topbar-actions {
-    gap: 0;
-  }
-  .save-status {
-    font-size: 11px;
   }
   .main-content {
     padding: 24px 20px calc(98px + env(safe-area-inset-bottom));
@@ -2380,13 +2360,9 @@ textarea.input {
   }
   .topbar {
     padding-left: 16px;
-    padding-right: 16px;
   }
   .topbar-brand {
     font-size: 15px;
-  }
-  .save-status {
-    font-size: 10px;
   }
   .nav-link {
     font-size: 10px;
