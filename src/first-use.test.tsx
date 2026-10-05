@@ -13,7 +13,6 @@ import App from "./App";
 import { createEmptyData } from "./domain/empty";
 import { currentMonth } from "./domain/finance";
 import { PrivacyContext, privacySettings } from "./privacy";
-import { rememberGuide, shouldShowGuide } from "./components/QuickGuide";
 import type { DataRepository } from "./repository";
 import type { AppData } from "./domain/types";
 
@@ -80,51 +79,15 @@ describe("primeiro uso", () => {
         <App repository={repository} />
       </PrivacyContext.Provider>,
     );
-    await screen.findByRole("dialog", { name: "Seu mês, em três passos" });
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(saved).toMatchObject({
       salaries: [], budgets: [], budgetTemplate: [], accounts: [], movements: [], goals: [],
       legacy: { status: "none", movements: [], possibleReturns: [] },
     });
   });
 
-  it("apresenta o essencial em uma única janela sem controle de valores e permite pular", async () => {
-    const app = setup();
-    app.mount();
-    const guide = await screen.findByRole("dialog", {
-      name: "Seu mês, em três passos",
-    });
-    expect(within(guide).getAllByRole("listitem")).toHaveLength(3);
-    expect(
-      within(guide).queryByRole("button", { name: /valores sensíveis/ }),
-    ).toBeNull();
-    fireEvent.click(
-      within(guide).getByRole("button", { name: "Explorar o app" }),
-    );
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(app.repository.save).not.toHaveBeenCalled();
-    expect(shouldShowGuide(app.read(), "new-user")).toBe(false);
-    expect(shouldShowGuide(app.read(), "another-user")).toBe(true);
-    cleanup();
-    app.mount();
-    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
-    expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
-  it("fecha o guia e abre diretamente o registro do salário", async () => {
-    const app = setup();
-    app.mount();
-    const guide = await screen.findByRole("dialog");
-    fireEvent.click(
-      within(guide).getByRole("button", { name: "Registrar salário" }),
-    );
-    expect(
-      screen.getByRole("dialog", { name: "Registrar salário" }),
-    ).toBeTruthy();
-    expect(screen.queryByText("Seu mês, em três passos")).toBeNull();
-    expect(shouldShowGuide(app.read(), "new-user")).toBe(false);
-  });
-
-  it("preserva contas existentes e permite reabrir o guia nas configurações", async () => {
+  it("preserva registros existentes ao abrir as configurações", async () => {
     const initial = createEmptyData();
     initial.salaries.push({
       id: "salary",
@@ -137,24 +100,12 @@ describe("primeiro uso", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "Configurações" }));
     await screen.findByRole("heading", { name: "Configurações", level: 1 });
-    fireEvent.click(screen.getByRole("button", { name: "Como usar o app" }));
-    const guide = screen.getByRole("dialog", { name: "Como usar o Cash Tracker" });
-    expect(within(guide).queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
-    expect(within(guide).getByRole("status").textContent).toBe("Etapa 1 de 3");
-    fireEvent.click(within(guide).getByRole("button", { name: "Próximo" }));
-    expect(within(guide).getByRole("heading", { name: "Planeje sem registrar cada compra" })).toBe(document.activeElement);
-    fireEvent.click(within(guide).getByRole("button", { name: "Anterior" }));
-    expect(within(guide).getByRole("status").textContent).toBe("Etapa 1 de 3");
-    fireEvent.click(within(guide).getByRole("button", { name: "Etapa 3: Reserva" }));
-    expect(within(guide).getByRole("status").textContent).toBe("Etapa 3 de 3");
-    fireEvent.click(within(guide).getByRole("button", { name: "Concluir" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(app.read()).toEqual(initial);
     expect(app.repository.save).not.toHaveBeenCalled();
   });
 
   it("oferece instruções por dispositivo quando não há instalação direta", async () => {
-    rememberGuide("new-user");
     const app = setup();
     app.mount();
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
@@ -174,7 +125,6 @@ describe("primeiro uso", () => {
   });
 
   it("usa a instalação direta e mantém ajuda disponível se o navegador falhar", async () => {
-    rememberGuide("new-user");
     const app = setup();
     app.mount();
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
@@ -198,7 +148,6 @@ describe("primeiro uso", () => {
   });
 
   it("não mostra referências a planilha ou estatísticas vazias para uma conta nova", async () => {
-    rememberGuide("new-user");
     const app = setup();
     app.mount();
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
@@ -221,7 +170,6 @@ describe("primeiro uso", () => {
   });
 
   it("conduz do primeiro local ao saldo inicial e só inclui o valor ao salvar", async () => {
-    rememberGuide("new-user");
     const app = setup();
     app.mount();
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
@@ -256,7 +204,6 @@ describe("primeiro uso", () => {
   });
 
   it("mantém o formulário do local em caso de falha e não avança para um aporte sem local salvo", async () => {
-    rememberGuide("new-user");
     const app = setup();
     vi.mocked(app.repository.save).mockRejectedValue(
       new Error("Falha ao salvar local"),
@@ -277,7 +224,6 @@ describe("primeiro uso", () => {
   });
 
   it("permite cancelar o primeiro aporte sem cadastrar nada", async () => {
-    rememberGuide("new-user");
     const app = setup();
     app.mount();
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
@@ -287,14 +233,4 @@ describe("primeiro uso", () => {
     expect(app.repository.save).not.toHaveBeenCalled();
   });
 
-  it("permite usar o app quando a preferência do guia não pode ser armazenada", () => {
-    vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
-      throw new Error("Storage blocked");
-    });
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
-      throw new Error("Storage blocked");
-    });
-    expect(shouldShowGuide(createEmptyData(), "new-user")).toBe(true);
-    expect(() => rememberGuide("new-user")).not.toThrow();
-  });
 });

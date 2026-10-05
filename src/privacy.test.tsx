@@ -19,6 +19,7 @@ import {
 } from "./privacy";
 import { SalaryForm, MovementForm, GoalForm } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
+import { SensitiveText } from "./privacy";
 import { createEmptyData } from "./domain/empty";
 import type { Actions, PageProps } from "./ui-types";
 
@@ -98,10 +99,11 @@ describe("privacidade das telas", () => {
     expect(screen.queryByText(/Informações ocultas/)).toBeNull();
     expect(screen.getByText("Adicione o app à tela de início.")).toBeTruthy();
   });
-  it("permite revelar conteúdo sensível dentro de uma janela financeira", () => {
+  it("mostra o formulário sem olho e sem mudar a privacidade da tela principal", () => {
     const setHidden = vi.fn();
     render(
       <PrivacyContext.Provider value={privacySettings(true, setHidden)}>
+        <p data-testid="main-private"><SensitiveText>Valor da tela principal</SensitiveText></p>
         <SalaryForm
           salary={data.salaries[1]}
           month="2026-10"
@@ -110,11 +112,10 @@ describe("privacidade das telas", () => {
         />
       </PrivacyContext.Provider>,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mostrar valores sensíveis" }),
-    );
-    expect(setHidden).toHaveBeenCalledWith(false);
-    expect(screen.getByText(/Informações ocultas/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
+    expect((screen.getByLabelText("Valor recebido (R$)") as HTMLInputElement).value).toBe("9.123,45");
+    expect(screen.getByTestId("main-private").textContent).toBe(PRIVATE_VALUE);
+    expect(setHidden).not.toHaveBeenCalled();
   });
   for (const Page of [
     DashboardPage,
@@ -153,43 +154,47 @@ describe("privacidade das telas", () => {
     expect(markup).toContain("Aluguel");
     expect(markup).toContain("Fixo");
   });
-  it("oculta valores nos campos e permite revelar sem perder o valor que estava sendo editado", () => {
+  it("permite editar e salvar mesmo com a tela principal oculta", () => {
+    const onSave = vi.fn();
     const view = render(
       <PrivacyContext.Provider value={hidden}>
         <SalaryForm
           salary={data.salaries[1]}
           month="2026-10"
           onClose={vi.fn()}
-          onSave={vi.fn()}
+          onSave={onSave}
         />
       </PrivacyContext.Provider>,
     );
     const amount = screen.getByLabelText(
       "Valor recebido (R$)",
     ) as HTMLInputElement;
-    expect(amount.value).toBe(PRIVATE_VALUE);
-    expect(amount.readOnly).toBe(true);
+    expect(amount.value).toBe("9.123,45");
+    expect(amount.readOnly).toBe(false);
     expect(
       (
         screen.getByRole("button", {
           name: "Salvar salário",
         }) as HTMLButtonElement
       ).disabled,
-    ).toBe(true);
+    ).toBe(false);
+    fireEvent.change(amount, { target: { value: "9500,00" } });
     view.rerender(
       <PrivacyContext.Provider value={privacySettings(false, vi.fn())}>
         <SalaryForm
           salary={data.salaries[1]}
           month="2026-10"
           onClose={vi.fn()}
-          onSave={vi.fn()}
+          onSave={onSave}
         />
       </PrivacyContext.Provider>,
     );
-    expect(amount.value).toMatch(/9\.123,45/);
+    expect(amount.value).toBe("9500,00");
     expect(amount.readOnly).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar salário" }));
+    expect(onSave).toHaveBeenCalledWith({ ...data.salaries[1], amount: 950000 });
   });
-  it("não expõe conta e nota pessoal em movimentação nem o nome do objetivo no formulário", () => {
+  it("mostra local, observação e objetivo apenas nos formulários, sem controles de olho", () => {
     const view = render(
       <PrivacyContext.Provider value={hidden}>
         <MovementForm
@@ -202,8 +207,9 @@ describe("privacidade das telas", () => {
         />
       </PrivacyContext.Provider>,
     );
-    expect(document.body.innerHTML).not.toContain("Banco pessoal confidencial");
-    expect(document.body.innerHTML).not.toContain("Nota pessoal confidencial");
+    expect(document.body.innerHTML).toContain("Banco pessoal confidencial");
+    expect(document.body.innerHTML).toContain("Nota pessoal confidencial");
+    expect(screen.queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
     view.unmount();
     render(
       <PrivacyContext.Provider value={hidden}>
@@ -215,9 +221,10 @@ describe("privacidade das telas", () => {
         />
       </PrivacyContext.Provider>,
     );
-    expect(document.body.innerHTML).not.toContain(
+    expect(document.body.innerHTML).toContain(
       "Objetivo pessoal confidencial",
     );
+    expect(screen.queryByRole("button", { name: /valores sensíveis/ })).toBeNull();
   });
   it("carrega a preferência imediatamente e sincroniza entre abas", () => {
     const values = new Map<string, string>();

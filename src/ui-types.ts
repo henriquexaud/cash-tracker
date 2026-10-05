@@ -32,7 +32,6 @@ export interface Actions {
   requestPersistence: () => void;
   install: () => void;
   showInstallGuide: () => void;
-  showGuide: () => void;
 }
 export interface AuthAccount {
   id: string;

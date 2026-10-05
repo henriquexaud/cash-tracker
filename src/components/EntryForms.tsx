@@ -19,7 +19,6 @@ import type {
   Salary,
 } from "../domain/types";
 import { Modal } from "./Modal";
-import { PRIVATE_VALUE, usePrivacy } from "../privacy";
 
 const moneyText = (value: number) => formatMoney(value).replace(/R\$\s*/, "");
 const parsedAmount = (value: string) => {
@@ -59,7 +58,6 @@ function FormActions({
   label?: string;
   disabled?: boolean;
 }) {
-  const { hidden } = usePrivacy();
   return (
     <div className="modal-footer">
       <button type="button" className="button secondary" onClick={onClose}>
@@ -68,7 +66,7 @@ function FormActions({
       <button
         type="submit"
         className="button primary"
-        disabled={disabled || hidden}
+        disabled={disabled}
       >
         {label}
       </button>
@@ -77,10 +75,9 @@ function FormActions({
 }
 
 function FormError({ error, id }: { error: string | null; id: string }) {
-  const { hidden } = usePrivacy();
   return error ? (
     <p className="form-error" role="alert" id={id} tabIndex={-1}>
-      {hidden ? "Mostre os valores para conferir o campo e continuar." : error}
+      {error}
     </p>
   ) : null;
 }
@@ -124,7 +121,6 @@ function MoneyField({
   hint?: string;
   autoFocus?: boolean;
 }) {
-  const { hidden } = usePrivacy();
   return (
     <Field label={label} id={id} hint={hint}>
       <input
@@ -134,8 +130,7 @@ function MoneyField({
         inputMode="decimal"
         autoComplete="off"
         placeholder="0,00"
-        value={hidden ? PRIVATE_VALUE : value}
-        readOnly={hidden}
+        value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-describedby={hint ? `${id}-hint` : undefined}
         data-autofocus={autoFocus ? "" : undefined}
@@ -147,16 +142,21 @@ function MoneyField({
 export function SalaryForm({
   month,
   salary,
+  initialAmount,
   onSave,
   onClose,
 }: {
   month: string;
   salary?: Salary;
+  initialAmount?: number;
   onSave: (salary: Salary) => void;
   onClose: () => void;
 }) {
   const id = useId();
-  const [amount, setAmount] = useState(salary ? moneyText(salary.amount) : "");
+  const [amount, setAmount] = useState(() => {
+    const value = salary?.amount ?? initialAmount;
+    return value === undefined ? "" : moneyText(value);
+  });
   const [error, setError] = useFormError(id);
   const monthLabel = /^\d{4}-\d{2}$/.test(month)
     ? new Intl.DateTimeFormat("pt-BR", {
@@ -178,7 +178,6 @@ export function SalaryForm({
 
   return (
     <Modal
-      sensitiveContent
       title={salary ? "Editar salário" : "Registrar salário"}
       description={monthLabel}
       onClose={onClose}
@@ -210,7 +209,6 @@ export function BudgetItemForm({
   onSave: (item: BudgetItem) => void;
   onClose: () => void;
 }) {
-  const { money: privateMoney } = usePrivacy();
   const id = useId();
   const [name, setName] = useState(item?.name ?? "");
   const [kind, setKind] = useState<BudgetKind>(item?.kind ?? "fixed");
@@ -262,7 +260,6 @@ export function BudgetItemForm({
 
   return (
     <Modal
-      sensitiveContent
       title={item ? "Editar gasto" : "Adicionar gasto"}
       description="Informe uma estimativa do que costuma gastar."
       onClose={onClose}
@@ -350,7 +347,7 @@ export function BudgetItemForm({
           <span>Total mensal</span>
           <strong>
             {monthlyAmount !== null && Number.isSafeInteger(monthlyAmount)
-              ? privateMoney(monthlyAmount)
+              ? formatMoney(monthlyAmount)
               : "—"}
           </strong>
         </div>
@@ -383,7 +380,6 @@ export function ReservePlanForm({
 
   return (
     <Modal
-      sensitiveContent
       title="Planejar quanto guardar"
       description="Este valor entra no cálculo do dinheiro livre previsto do mês."
       onClose={onClose}
@@ -421,7 +417,6 @@ export function MovementForm({
   onSave: (movement: Movement) => void;
   onClose: () => void;
 }) {
-  const { hidden, protect } = usePrivacy();
   const id = useId();
   const [accountId, setAccountId] = useState(
     movement?.accountId ?? data.accounts[0]?.id ?? "",
@@ -433,9 +428,14 @@ export function MovementForm({
       : (movement?.date ?? initialDate ?? today()),
   );
   const [kind, setKind] = useState<MovementKind>(movement?.kind ?? initialKind);
+  const suggestedAmount = (kind: MovementKind, date: string) => {
+    const plan = data.budgets.find((budget) => budget.month === date.slice(0, 7))?.reservePlan;
+    return kind === "contribution" && plan ? moneyText(plan) : "";
+  };
   const [amount, setAmount] = useState(
-    movement ? moneyText(movement.amount) : "",
+    () => movement ? moneyText(movement.amount) : suggestedAmount(kind, date),
   );
+  const [amountEdited, setAmountEdited] = useState(false);
   const [note, setNote] = useState(movement?.note ?? "");
   const [error, setError] = useFormError(id);
   const isLegacyOpening = Boolean(
@@ -475,7 +475,6 @@ export function MovementForm({
 
   return (
     <Modal
-      sensitiveContent
       title={
         movement
           ? "Editar movimentação"
@@ -484,7 +483,6 @@ export function MovementForm({
       description={
         data.accounts.length === 1 ? data.accounts[0].name : undefined
       }
-      sensitiveDescription
       onClose={onClose}
     >
       <form onSubmit={submit} noValidate>
@@ -493,7 +491,10 @@ export function MovementForm({
             id={`${id}-amount`}
             label="Valor (R$)"
             value={amount}
-            onChange={setAmount}
+            onChange={(value) => {
+              setAmount(value);
+              setAmountEdited(true);
+            }}
             hint={hint}
             autoFocus
           />
@@ -510,7 +511,11 @@ export function MovementForm({
               className="select"
               id={`${id}-kind`}
               value={kind}
-              onChange={(event) => setKind(event.target.value as MovementKind)}
+              onChange={(event) => {
+                const next = event.target.value as MovementKind;
+                setKind(next);
+                if (!movement && !amountEdited) setAmount(suggestedAmount(next, date));
+              }}
               disabled={isLegacyOpening}
               aria-describedby={isLegacyOpening ? `${id}-kind-hint` : undefined}
             >
@@ -534,7 +539,7 @@ export function MovementForm({
                 )}
                 {data.accounts.map((account) => (
                   <option key={account.id} value={account.id}>
-                    {protect(account.name)}
+                    {account.name}
                   </option>
                 ))}
               </Select>
@@ -554,7 +559,11 @@ export function MovementForm({
               type={monthlyDate ? "month" : "date"}
               id={`${id}-date`}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setDate(next);
+                if (!movement && !amountEdited) setAmount(suggestedAmount(kind, next));
+              }}
               aria-describedby={monthlyDate ? `${id}-date-hint` : undefined}
             />
           </Field>
@@ -566,8 +575,7 @@ export function MovementForm({
                 id={`${id}-note`}
                 rows={2}
                 maxLength={500}
-                value={hidden ? PRIVATE_VALUE : note}
-                readOnly={hidden}
+                value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Ex.: aporte de outubro"
               />
@@ -601,7 +609,6 @@ export function GoalForm({
   onSave: (goal: Goal) => void;
   onClose: () => void;
 }) {
-  const { hidden, money: privateMoney, protect } = usePrivacy();
   const id = useId();
   const [name, setName] = useState(goal?.name ?? "");
   const [accountId, setAccountId] = useState(
@@ -648,7 +655,6 @@ export function GoalForm({
 
   return (
     <Modal
-      sensitiveContent
       title={goal ? "Editar objetivo" : "Criar objetivo"}
       description="Destine parte do saldo de uma conta a um objetivo. O dinheiro continua na mesma conta."
       onClose={onClose}
@@ -659,8 +665,7 @@ export function GoalForm({
             <input
               className="input"
               id={`${id}-name`}
-              value={hidden ? PRIVATE_VALUE : name}
-              readOnly={hidden}
+              value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={100}
               placeholder="Ex.: reserva de emergência"
@@ -679,7 +684,7 @@ export function GoalForm({
               )}
               {data.accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {protect(account.name)}
+                  {account.name}
                 </option>
               ))}
             </Select>
@@ -700,7 +705,7 @@ export function GoalForm({
         </div>
         <div className="money-preview">
           <span>Disponível para este objetivo</span>
-          <strong>{privateMoney(Math.max(0, balance - otherAllocated))}</strong>
+          <strong>{formatMoney(Math.max(0, balance - otherAllocated))}</strong>
         </div>
         {!data.accounts.length && (
           <p className="form-hint">
@@ -727,7 +732,6 @@ export function AccountForm({
   onClose: () => void;
   description?: string;
 }) {
-  const { hidden, money: privateMoney, protect } = usePrivacy();
   const id = useId();
   const [name, setName] = useState("");
   const [error, setError] = useFormError(id);
@@ -739,7 +743,6 @@ export function AccountForm({
 
   return (
     <Modal
-      sensitiveContent
       title="Adicionar local de reserva"
       description={description}
       onClose={onClose}
@@ -750,8 +753,7 @@ export function AccountForm({
             <input
               className="input"
               id={`${id}-name`}
-              value={hidden ? PRIVATE_VALUE : name}
-              readOnly={hidden}
+              value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={100}
               placeholder="Ex.: conta corrente ou reserva"
@@ -775,7 +777,6 @@ export function LegacyForm({
   onSave: (movement: Movement) => void;
   onClose: () => void;
 }) {
-  const { hidden, money: privateMoney, protect } = usePrivacy();
   const id = useId();
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today());
@@ -809,7 +810,6 @@ export function LegacyForm({
 
   return (
     <Modal
-      sensitiveContent
       title="Conferir reserva da planilha"
       description="Os valores antigos foram preservados. Confirme o saldo atual para começar a acompanhar sua conta."
       onClose={onClose}
@@ -824,11 +824,11 @@ export function LegacyForm({
           </p>
           <div className="money-preview">
             <span>Saldo das movimentações antigas</span>
-            <strong>{privateMoney(data.legacy.displayedNet)}</strong>
+            <strong>{formatMoney(data.legacy.displayedNet)}</strong>
           </div>
           <div className="money-preview">
             <span>Total guardado exibido na imagem</span>
-            <strong>{protect(data.legacy.displayedSaved)}</strong>
+            <strong>{data.legacy.displayedSaved}</strong>
           </div>
           <details>
             <summary>Ver os valores preservados da planilha</summary>
@@ -836,19 +836,19 @@ export function LegacyForm({
               <strong>Entradas e saídas, na ordem da imagem:</strong>
               <br />
               {data.legacy.movements
-                .map((value) => privateMoney(value))
+                .map((value) => formatMoney(value))
                 .join(" · ")}
             </p>
             <p className="form-hint">
               <strong>Possíveis rendimentos:</strong>
               <br />
               {data.legacy.possibleReturns
-                .map((value) => privateMoney(value))
+                .map((value) => formatMoney(value))
                 .join(" · ")}
             </p>
             {data.legacy.notes.map((note, index) => (
               <p className="form-hint" key={index}>
-                {protect(note)}
+                {note}
               </p>
             ))}
           </details>
@@ -883,7 +883,7 @@ export function LegacyForm({
               )}
               {data.accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {protect(account.name)}
+                  {account.name}
                 </option>
               ))}
             </Select>

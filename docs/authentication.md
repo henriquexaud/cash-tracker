@@ -50,15 +50,13 @@ Duas retiradas offline diferentes podem, quando combinadas, exceder o saldo. O a
 | Histórico | Salários, totais, médias/variações e gráficos | Datas, períodos e quantidade de registros |
 | Reserva | Saldos, aportes, retiradas, rendimentos, metas, percentuais, gráficos, nomes dos locais/objetivos e notas pessoais | Data, tipo de movimentação e ações |
 | Configurações | E-mail da conta e valores do orçamento-base | Tema, estado offline/sincronização, datas de backup e contagens |
-| Formulários | Campos monetários, nomes dos locais/objetivos e notas pessoais | Datas, tipos e categorias |
+| Formulários | A ocultação das telas principais não se aplica ao modal de edição | Campos monetários, nomes, notas, datas e categorias |
 
-Gráficos e barras de progresso são retirados da renderização quando ocultos, inclusive seus rótulos acessíveis. Campos financeiros aparecem mascarados e só permitem salvar depois de revelar. Janelas com informações sensíveis possuem um botão de olho; instruções de instalação e outras janelas sem esses dados não mostram o controle nem o aviso de valores ocultos. A preferência é aplicada antes dos dados e persistida por dispositivo, separada da conta e do backup.
+Gráficos e barras de progresso são retirados da renderização quando ocultos, inclusive seus rótulos acessíveis. O botão de olho aparece apenas nas telas principais. Modais mostram os campos e informações para consulta e edição, sem alterar a preferência de ocultação da tela principal. A preferência é aplicada antes dos dados e persistida por dispositivo, separada da conta e do backup.
 
 Login, cadastro e recuperação permitem mostrar ou ocultar a senha. Cadastro e definição de nova senha exigem confirmação correspondente antes de enviar ao Supabase. Os controles de visibilidade são independentes e voltam a ocultar ao trocar de formulário.
 
 ## Primeiro uso
-
-Uma conta vazia recebe uma apresentação em uma única janela: recebido, gastos aproximados e reserva. É possível pular ou abrir diretamente o registro de salário. O guia pode ser reaberto em Configurações; sua dispensa é lembrada por conta neste navegador, sem alterar registros financeiros. Contas com dados não recebem a apresentação automaticamente.
 
 Telas vazias orientam o primeiro registro e evitam gráficos sem dados ou referências a uma planilha inexistente. O primeiro aporte ou saldo inicial conduz ao cadastro de um local e, depois de salvá-lo, abre o formulário do valor. Cancelar esse segundo formulário mantém apenas o local cadastrado. Saldo inicial e aportes continuam sendo lançamentos manuais: a sobra do orçamento não gera movimentações.
 

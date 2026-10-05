@@ -61,13 +61,7 @@ import {
   SalaryForm,
 } from "./components/EntryForms";
 import { Modal } from "./components/Modal";
-import { SettingsGuide } from "./components/SettingsGuide";
 import { InstallGuide } from "./components/InstallGuide";
-import {
-  QuickGuide,
-  rememberGuide,
-  shouldShowGuide,
-} from "./components/QuickGuide";
 import {
   DashboardPage,
   BudgetPage,
@@ -131,8 +125,6 @@ export default function App({
   const [page, setPage] = useState<Page>(readPage);
   const [month, setMonth] = useState<Month>(currentMonth);
   const [modal, setModal] = useState<ReactNode>(null);
-  const [guideOpen, setGuideOpen] = useState(false);
-  const guideIdentity = account?.id ?? "local";
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{
     text: string;
@@ -164,7 +156,6 @@ export default function App({
         return initial;
       });
       setData(result);
-      setGuideOpen(shouldShowGuide(result, guideIdentity));
       if (navigator.storage?.persisted)
         setPersistent(await navigator.storage.persisted());
     } catch (error) {
@@ -306,10 +297,6 @@ export default function App({
     }
   };
   const close = () => setModal(null);
-  const dismissGuide = () => {
-    rememberGuide(guideIdentity);
-    setGuideOpen(false);
-  };
   const commit = async (
     transform: (current: AppData) => AppData,
     message: string,
@@ -330,7 +317,7 @@ export default function App({
     sensitive = false,
   ) => {
     setModal(
-      <Modal title={title} onClose={close} sensitiveContent={sensitive}>
+      <Modal title={title} onClose={close}>
         <p className="modal-description">
           {sensitive ? (
             <SensitiveText>{description}</SensitiveText>
@@ -528,17 +515,11 @@ export default function App({
 
   const actions: Actions = {
     navigate,
-    showGuide: () => {
-      close();
-      if (page === "settings") {
-        setGuideOpen(false);
-        setModal(<SettingsGuide onClose={close} />);
-      } else setGuideOpen(true);
-    },
     editSalary: (salary, target = salary?.month ?? month) =>
       setModal(
         <SalaryForm
           salary={salary ?? data.salaries.find((s) => s.month === target)}
+          initialAmount={[...data.salaries].sort((a, b) => b.month.localeCompare(a.month))[0]?.amount}
           month={target}
           onClose={close}
           onSave={(s) =>
@@ -889,6 +870,21 @@ export default function App({
     wealth: WealthPage,
     settings: SettingsPage,
   }[page];
+  const saveStatusText = saving
+    ? "Salvando…"
+    : repository.mode === "cloud"
+      ? {
+          local: "Salvo neste dispositivo",
+          offline: "Offline · salvo aqui",
+          pending: "Aguardando envio",
+          syncing: "Sincronizando…",
+          synced: "Sincronizado",
+          error: "Salvo aqui · envio pendente",
+          review: "Revise os registros",
+        }[syncStatus]
+      : online
+        ? "Salvo neste dispositivo"
+        : "Offline · salvo aqui";
   const monthChange = (newMonth: string) => {
     if (/^\d{4}-(0[1-9]|1[0-2])$/.test(newMonth)) {
       setMonth(newMonth);
@@ -937,23 +933,9 @@ export default function App({
             Cash Tracker
           </a>
           <div className="topbar-actions">
-            <span className="save-status">
+            <span className="save-status" title={saveStatusText}>
               <span className={`status-dot ${!online ? "offline" : ""}`} />
-              {saving
-                ? "Salvando…"
-                : repository.mode === "cloud"
-                  ? {
-                      local: "Salvo neste dispositivo",
-                      offline: "Offline · salvo aqui",
-                      pending: "Aguardando envio",
-                      syncing: "Sincronizando…",
-                      synced: "Sincronizado",
-                      error: "Salvo aqui · envio pendente",
-                      review: "Revise os registros",
-                    }[syncStatus]
-                  : online
-                    ? "Salvo neste dispositivo"
-                    : "Offline · salvo aqui"}
+              <span className="save-status-text">{saveStatusText}</span>
             </span>
             <button
               type="button"
@@ -973,14 +955,6 @@ export default function App({
               )}
             </button>
             <PrivacyToggle />
-            <button
-              className="icon-button topbar-help"
-              title="Guia rápido"
-              aria-label="Guia rápido"
-              onClick={actions.showGuide}
-            >
-              <CircleHelp size={18} />
-            </button>
           </div>
         </header>
         <main id="main-content" className={`main-content page-${page}`}>
@@ -1107,16 +1081,6 @@ export default function App({
         </main>
       </div>
       {modal}
-      {guideOpen && !modal && (
-        <QuickGuide
-          onClose={dismissGuide}
-          onStart={() => {
-            dismissGuide();
-            setMonth(currentMonth());
-            actions.editSalary(undefined, currentMonth());
-          }}
-        />
-      )}
       {notice && (
         <div
           className={`toast ${notice.error ? "error" : ""}`}
@@ -1154,7 +1118,6 @@ export default function App({
               <Modal
                 title="Restaurar este backup?"
                 onClose={close}
-                sensitiveContent
               >
                 <p className="modal-description">
                   O arquivo contém{" "}

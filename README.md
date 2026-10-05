@@ -8,7 +8,7 @@ Aplicação para registrar manualmente quanto entrou, os gastos aproximados do m
 - Locais de reserva, aportes, retiradas, rendimentos e objetivos.
 - Cadastro, confirmação de e-mail, login e recuperação de senha pelo Supabase.
 - Dados separados por conta, gravação offline e sincronização entre dispositivos.
-- Temas claro e escuro, ocultação de valores e guia rápido no primeiro uso.
+- Temas claro e escuro e ocultação de valores.
 - Backup e restauração em JSON, com validação antes de substituir os registros.
 
 Toda instalação e conta nova começa vazia. O código não contém salários, gastos, saldos ou dados pessoais de usuários. Testes usam apenas dados fictícios.

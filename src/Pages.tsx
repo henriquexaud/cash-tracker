@@ -340,7 +340,9 @@ export function BudgetPage({ data, month, actions }: PageProps) {
   const items = summary.budgetItems;
   const cost = summary.estimatedExpenses;
   const previous = data.budgets.find((b) => b.month === shiftMonth(month, -1));
-  const filtered = items.filter((i) => filter === "all" || i.kind === filter);
+  const filtered = items
+    .filter((i) => filter === "all" || i.kind === filter)
+    .sort((a, b) => b.unitAmount * b.factor - a.unitAmount * a.factor);
   return (
     <>
       {!summary.budget && (previous || data.budgetTemplate.length > 0) && (
@@ -1084,15 +1086,6 @@ export function SettingsPage({
   const installed = useInstalledApp();
   return (
     <div className="settings-layout">
-      <section className="settings-welcome" aria-labelledby="settings-guide-title">
-        <span className="settings-welcome-icon"><Info size={23} aria-hidden="true" /></span>
-        <div>
-          <h2 id="settings-guide-title">Entenda seu mês em três passos</h2>
-          <p>Recebido, orçamento e reserva. Um guia para usar o app com clareza.</p>
-        </div>
-        <button className="button secondary" onClick={actions.showGuide}>Como usar o app <ArrowRight size={16} /></button>
-      </section>
-
       <section className="panel settings-block" aria-labelledby="settings-appearance-title">
         <div className="settings-section-heading">
           <Palette size={20} aria-hidden="true" />

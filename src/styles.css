@@ -1520,33 +1520,6 @@ select {
   column-gap: 24px;
 }
 
-.guide-steps {
-  display: grid;
-  gap: 22px;
-  list-style: none;
-  padding: 4px 0;
-  margin: 0 0 22px;
-}
-.guide-steps li {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-.guide-steps svg {
-  color: var(--green);
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.guide-steps h3 {
-  margin: 0 0 5px;
-  font-size: 15px;
-}
-.guide-steps p {
-  margin: 0;
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.55;
-}
 .reserve-start .settings-actions {
   justify-content: center;
   margin-top: 20px;
@@ -1625,29 +1598,6 @@ select {
   gap: 20px;
   max-width: 920px;
 }
-.settings-welcome {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 22px 24px;
-  border: 1px solid var(--notice-border);
-  border-radius: 10px;
-  background: var(--green-light);
-}
-.settings-welcome-icon {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--green);
-  flex-shrink: 0;
-}
-.settings-welcome > div { flex: 1; min-width: 0; }
-.settings-welcome h2 { font-size: 16px; line-height: 1.5; }
-.settings-welcome p { margin-top: 5px; font-size: 13px; color: var(--muted); line-height: 1.7; }
-.settings-welcome .button { flex-shrink: 0; }
 .settings-block { padding: 26px; }
 .settings-section-heading { display: flex; align-items: flex-start; gap: 12px; }
 .settings-section-heading > svg { flex-shrink: 0; margin-top: 2px; color: var(--green); }
@@ -1681,30 +1631,12 @@ select {
 .theme-option[aria-pressed="true"] { background: var(--green-light); color: var(--green); border-color: var(--green); font-weight: 600; }
 .theme-option-icon { display: inline-flex; }
 .theme-status { display: block; margin-top: 12px; }
-.modal.settings-guide, .modal.install-guide { width: min(100%, 590px); display: flex; flex-direction: column; overflow: hidden; }
-.settings-guide .modal-header, .install-guide .modal-header { flex-shrink: 0; }
-.settings-guide .modal-body, .install-guide .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.settings-guide .modal-footer, .install-guide .modal-footer { flex-shrink: 0; }
-.guide-navigation { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px; }
-.guide-navigation button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 12px; }
-.guide-navigation button > span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); font-size: 11px; flex-shrink: 0; }
-.guide-navigation button[aria-current="step"] { background: var(--green-light); color: var(--green); border-color: var(--green); }
-.guide-navigation button[aria-current="step"] > span { background: var(--green); color: var(--surface); }
-.guide-page, .install-content { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
-.guide-page-icon { display: inline-grid; place-items: center; width: 50px; height: 50px; background: var(--green-light); color: var(--green); border-radius: 12px; margin-bottom: 14px; }
-.guide-page-count { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-.guide-page h3 { font-size: 23px; line-height: 1.3; letter-spacing: -.5px; }
-.guide-page h3:focus { outline: none; }
-.guide-description { margin-top: 10px; font-size: 13px; line-height: 1.8; color: var(--muted); }
-.guide-highlights { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0; }
-.guide-highlights span { font-size: 11px; line-height: 1.5; background: var(--surface-soft); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--muted); padding: 7px 9px; }
-.guide-points { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
-.guide-points li { display: flex; align-items: flex-start; gap: 10px; }
-.guide-points svg { color: var(--green); flex-shrink: 0; margin-top: 3px; }
-.guide-points strong { font-size: 13px; font-weight: 550; line-height: 1.6; }
-.guide-points p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-top: 4px; }
-.guide-note, .install-offline-note { padding: 13px 15px; border-radius: 8px; background: var(--green-light); color: var(--green); font-size: 12px; line-height: 1.8; margin-top: 20px; }
-.guide-footer { justify-content: space-between; }
+.modal.install-guide { width: min(100%, 590px); display: flex; flex-direction: column; overflow: hidden; }
+.install-guide .modal-header { flex-shrink: 0; }
+.install-guide .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.install-guide .modal-footer { flex-shrink: 0; }
+.install-content { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+.install-offline-note { padding: 13px 15px; border-radius: 8px; background: var(--green-light); color: var(--green); font-size: 12px; line-height: 1.8; margin-top: 20px; }
 .install-platforms { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 22px; }
 .install-platforms button { display: flex; justify-content: center; align-items: center; gap: 7px; border: 1px solid var(--border-control); background: var(--surface); color: var(--muted); border-radius: 8px; min-height: 44px; font-size: 12px; padding: 8px; }
 .install-platforms button[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-light); }
@@ -1716,21 +1648,12 @@ select {
 .install-steps p { font-size: 13px; line-height: 1.8; color: var(--muted); margin-top: 4px; }
 @media (max-width: 760px) {
   .settings-layout { gap: 16px; }
-  .settings-welcome { flex-wrap: wrap; padding: 20px; gap: 12px; }
-  .settings-welcome > div { flex-basis: calc(100% - 56px); }
-  .settings-welcome .button { width: 100%; margin-top: 4px; }
   .settings-block { padding: 20px; }
   .settings-row { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px 0; }
   .settings-row-actions { justify-content: flex-start; max-width: none; width: 100%; }
   .settings-backup-row .settings-row-actions .button { flex: 1; }
   .settings-install-row .settings-row-actions .button { width: 100%; }
-  .guide-navigation { margin-bottom: 20px; gap: 6px; }
-  .guide-navigation button, .install-platforms button { flex-direction: column; font-size: 11px; gap: 6px; padding: 8px 4px; }
-  .guide-page { min-height: 0; }
-  .guide-page h3 { font-size: 21px; }
-  .guide-page-icon { width: 42px; height: 42px; margin-bottom: 12px; }
-  .guide-highlights { margin: 15px 0; }
-  .guide-points { gap: 14px; }
+  .install-platforms button { flex-direction: column; font-size: 11px; gap: 6px; padding: 8px 4px; }
 }
 .modal-backdrop {
   position: fixed;
@@ -2088,6 +2011,7 @@ textarea.input {
   .topbar {
     min-height: 58px;
     height: auto;
+    gap: 8px;
     padding: 10px 20px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -2102,9 +2026,6 @@ textarea.input {
   }
   .topbar-actions {
     gap: 0;
-  }
-  .topbar-help {
-    display: none;
   }
   .save-status {
     font-size: 11px;
@@ -2574,12 +2495,6 @@ textarea.input {
   flex: 1;
   min-width: 0;
 }
-.modal-header .privacy-toggle {
-  flex: 0 0 auto;
-}
-.privacy-form-hint {
-  margin: 0 25px 15px;
-}
 .privacy-chart {
   min-height: 180px;
 }
@@ -2589,8 +2504,5 @@ textarea.input {
   }
   .auth-links {
     flex-wrap: wrap;
-  }
-  .privacy-form-hint {
-    margin-inline: 20px;
   }
 }
