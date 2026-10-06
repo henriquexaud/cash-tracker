@@ -6,8 +6,9 @@ A logo oficial é a carteira com barras de crescimento, nas versões verde e cre
 
 - [wallet-light.png](../src/assets/brand/wallet-light.png) vem de `cash_tracker_verde_transparente_centralizado.png`; a carteira verde aparece no tema claro.
 - [wallet-dark.png](../src/assets/brand/wallet-dark.png) vem de `cash_tracker_creme_transparente_centralizado.png`; a carteira creme aparece no tema escuro.
-- O componente [BrandMark](../src/components/BrandMark.tsx) compartilha essas imagens transparentes de 256 × 256 no menu, cabeçalho do celular, login e carregamento. A marca acompanha o tema resolvido, incluindo preferência do sistema e alterações entre abas. Menu/cabeçalho preservam o espaço de 32 px (28 px em telas menores); login/carregamento usam 64 px.
-- Os favicons claro e escuro usam as mesmas carteiras transparentes das telas. A versão com fundo verde, `Ícone de carteira financeira verde e creme.png`, origina os ícones de instalação, com bom contraste em superfícies claras e escuras.
+- O componente [BrandMark](../src/components/BrandMark.tsx) usa essas imagens transparentes de 256 × 256 nas telas de carregamento, exibidas em 64 px. A marca acompanha o tema resolvido, incluindo preferência do sistema e alterações entre abas.
+- Menu e cabeçalho do celular mostram apenas o nome, sem o ícone da carteira. O login mostra apenas o título `cashtracker.`, sem ícone ou slogan; cadastro, confirmação e recuperação preservam suas orientações.
+- Os favicons claro e escuro usam as mesmas carteiras transparentes do carregamento. A versão com fundo verde, `Ícone de carteira financeira verde e creme.png`, origina os ícones de instalação, com bom contraste em superfícies claras e escuras.
 
 ## Arquivos para navegador e instalação
 

@@ -902,7 +902,6 @@ export default function App({
           href="#dashboard"
           aria-label="Cash Tracker, visão geral"
         >
-          <BrandMark />
           <span>
             cash<span className="brand-light">tracker</span>
             <span className="brand-dot">.</span>
@@ -930,7 +929,6 @@ export default function App({
       <div className="workspace">
         <header className="topbar">
           <a className="topbar-brand" href="#dashboard">
-            <BrandMark />
             Cash Tracker
           </a>
           <div className="topbar-actions">

@@ -224,7 +224,6 @@ textarea {
   display: block;
   object-fit: contain;
 }
-.auth-card > .brand-mark,
 .loading-screen > .brand-mark {
   width: 64px;
   height: 64px;
@@ -2426,9 +2425,13 @@ textarea.input {
   padding: 32px;
 }
 .auth-card h1 {
-  margin: 23px 0 10px;
+  margin: 0 0 10px;
   font-size: 23px;
   letter-spacing: -0.7px;
+}
+.auth-card .auth-wordmark {
+  margin-bottom: 26px;
+  font-weight: 650;
 }
 .auth-description {
   color: var(--muted);

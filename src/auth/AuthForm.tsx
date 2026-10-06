@@ -1,7 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Moon, Sun } from "lucide-react";
-import { BrandMark } from "../components/BrandMark";
 import { useTheme } from "../theme";
 import { PasswordField } from "./PasswordField";
 
@@ -141,27 +140,29 @@ export function AuthForm({
         </button>
       </div>
       <section className="auth-card panel">
-        <BrandMark />
-        <h1>
-          {mode === "login"
-            ? "Entrar no Cash Tracker"
-            : mode === "register"
-              ? "Criar sua conta"
-              : mode === "confirm"
-                ? "Confirmar seu e-mail"
-                : mode === "reset"
-                  ? "Recuperar acesso"
-                  : "Definir nova senha"}
+        <h1 className={mode === "login" ? "auth-wordmark" : undefined}>
+          {mode === "login" ? (
+            <>
+              cash<span className="brand-light">tracker</span>
+              <span className="brand-dot">.</span>
+            </>
+          ) : mode === "register"
+            ? "Criar sua conta"
+            : mode === "confirm"
+              ? "Confirmar seu e-mail"
+              : mode === "reset"
+                ? "Recuperar acesso"
+                : "Definir nova senha"}
         </h1>
-        <p className="auth-description">
-          {mode === "login"
-            ? "Seu dinheiro, com clareza."
-            : mode === "register"
+        {mode !== "login" && (
+          <p className="auth-description">
+            {mode === "register"
               ? "Seus registros ficam separados e sincronizados na sua conta."
               : mode === "confirm"
                 ? "Abra o link enviado por e-mail. Depois, entre com sua senha."
                 : "Use seu e-mail para continuar com segurança."}
-        </p>
+          </p>
+        )}
         <form onSubmit={submit} aria-busy={busy}>
           {mode !== "recovery" && (
             <label className="field">
