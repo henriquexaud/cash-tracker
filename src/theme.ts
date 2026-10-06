@@ -56,6 +56,9 @@ export function createThemeStore(host: ThemeHost) {
     host.document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", themeColors[snapshot.resolvedTheme]);
+    host.document
+      .querySelector('link#app-favicon')
+      ?.setAttribute("href", `/icons/wallet-favicon-${snapshot.resolvedTheme}.png`);
   };
   const update = () => {
     const resolvedTheme = resolve();

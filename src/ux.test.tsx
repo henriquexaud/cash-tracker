@@ -167,6 +167,23 @@ describe("cabeçalho e configurações", () => {
     expect(within(header).queryByText(/Salvo|Sincroniz|Offline|Salvando/)).toBeNull();
   });
 
+  it("troca as marcas do menu e cabeçalho com o tema sem gravar dados financeiros", async () => {
+    const { repository } = setup(createEmptyData());
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    const marks = () => Array.from(document.querySelectorAll<HTMLImageElement>(".brand-mark img"));
+    const initialTheme = document.documentElement.dataset.theme;
+    expect(marks()).toHaveLength(2);
+    expect(marks().every(mark => mark.src.includes(`wallet-${initialTheme}.png`))).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /Ativar tema/ }));
+    const changedTheme = document.documentElement.dataset.theme;
+    expect(changedTheme).not.toBe(initialTheme);
+    expect(marks().every(mark => mark.src.includes(`wallet-${changedTheme}.png`))).toBe(true);
+    expect(marks().every(mark => mark.alt === "" && mark.closest("[aria-hidden='true']"))).toBe(true);
+    expect(repository.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Ativar tema/ }));
+    expect(marks().every(mark => mark.src.includes(`wallet-${initialTheme}.png`))).toBe(true);
+  });
+
   it("preserva o aviso e a ação para alterações pendentes", async () => {
     const sync = vi.fn(async () => {});
     const repository: DataRepository = {

@@ -29,12 +29,16 @@ function browserTheme({
   meta.setAttribute.mockImplementation((_name: string, content: string) => {
     meta.content = content;
   });
+  const favicon = { href: "", setAttribute: vi.fn() };
+  favicon.setAttribute.mockImplementation((_name: string, href: string) => {
+    favicon.href = href;
+  });
   const document = {
     documentElement: {
       dataset: {} as Record<string, string>,
       style: {} as Record<string, string>,
     },
-    querySelector: () => meta,
+    querySelector: (selector: string) => selector === 'link#app-favicon' ? favicon : meta,
   };
   const storage = {
     getItem: vi.fn((key: string) => values.get(key) ?? null),
@@ -60,6 +64,7 @@ function browserTheme({
     host: host as unknown as Parameters<typeof createThemeStore>[0],
     document,
     meta,
+    favicon,
     storage,
     setSystemDark: (next: boolean) => {
       media.matches = next;
@@ -87,10 +92,12 @@ describe("device appearance", () => {
     expect(browser.document.documentElement.dataset.theme).toBe("dark");
     expect(browser.document.documentElement.style.colorScheme).toBe("dark");
     expect(browser.meta.content).toBe("#101a17");
+    expect(browser.favicon.href).toBe("/icons/wallet-favicon-dark.png");
 
     browser.setSystemDark(false);
     expect(store.getSnapshot().resolvedTheme).toBe("light");
     expect(browser.meta.content).toBe("#244b3b");
+    expect(browser.favicon.href).toBe("/icons/wallet-favicon-light.png");
     expect(changed).toHaveBeenCalledOnce();
     expect(browser.storage.setItem).not.toHaveBeenCalled();
     store.dispose();
@@ -109,8 +116,10 @@ describe("device appearance", () => {
 
     const nextLoad = createThemeStore(browser.host);
     expect(nextLoad.getSnapshot().resolvedTheme).toBe("dark");
+    expect(browser.favicon.href).toBe("/icons/wallet-favicon-dark.png");
     nextLoad.setPreference("system");
     expect(nextLoad.getSnapshot().resolvedTheme).toBe("light");
+    expect(browser.favicon.href).toBe("/icons/wallet-favicon-light.png");
     browser.setSystemDark(true);
     expect(nextLoad.getSnapshot().resolvedTheme).toBe("dark");
     expect(browser.storage.setItem.mock.calls).toEqual([
@@ -128,6 +137,7 @@ describe("device appearance", () => {
     expect(store.getSnapshot()).toBe(initial);
     browser.changeFromAnotherTab(THEME_STORAGE_KEY, "dark");
     expect(store.getSnapshot().resolvedTheme).toBe("dark");
+    expect(browser.favicon.href).toBe("/icons/wallet-favicon-dark.png");
     browser.changeFromAnotherTab(THEME_STORAGE_KEY, "invalid");
     expect(store.getSnapshot()).toEqual({
       preference: "system",
@@ -195,6 +205,7 @@ describe("theme before the app loads", () => {
     expect(browser.document.documentElement.style.colorScheme).toBe(
       scenario.expected,
     );
+    expect(browser.favicon.href).toBe(`/icons/wallet-favicon-${scenario.expected}.png`);
     const beforeRender = browser.meta.content;
     const store = createThemeStore(browser.host);
     expect(store.getSnapshot().resolvedTheme).toBe(scenario.expected);

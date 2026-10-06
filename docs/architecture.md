@@ -12,7 +12,7 @@
 | `src/auth/` | Login/recuperação, identidade offline e repositório cloud. |
 | `src/sync/` | Cache por conta, revisões por registro e materialização da mesclagem. |
 | `src/privacy.tsx`, `src/theme.ts`, `src/styles.css` | Preferências do dispositivo, apresentação e responsividade. |
-| `src/components/BrandMark.tsx`, `src/assets/logo-mark.svg`, `public/icons/` | Logo compartilhada, favicons e ícones de instalação; veja [branding.md](branding.md). |
+| `src/components/BrandMark.tsx`, `src/assets/brand/`, `public/icons/` | Logo compartilhada por tema, favicons e ícones de instalação; veja [branding.md](branding.md). |
 | `public/sw.js`, `vite.config.ts` | Shell offline, atualização e injeção do precache no build. |
 | `supabase/schema.sql`, `security.test.sql` | Documento privado por usuário, RPC de mesclagem e teste SQL. |
 | `scripts/` | Harness local e inspeção dos artefatos; não entra no bundle. |

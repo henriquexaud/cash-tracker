@@ -7,6 +7,7 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#244b3b" />
+    <link id="app-favicon" rel="icon" type="image/png" href="/icons/wallet-favicon-light.png" sizes="48x48" />
     <script>
       (function () {
         var preference = "system";
@@ -26,6 +27,9 @@
         document
           .querySelector('meta[name="theme-color"]')
           .setAttribute("content", dark ? "#101a17" : "#244b3b");
+        document
+          .querySelector('link#app-favicon')
+          .setAttribute("href", dark ? "/icons/wallet-favicon-dark.png" : "/icons/wallet-favicon-light.png");
       })();
     </script>
     <meta
@@ -39,9 +43,7 @@
       href="/manifest.webmanifest"
       crossorigin="use-credentials"
     />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
-    <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" sizes="any" />
-    <link rel="apple-touch-icon" href="/icons/logo-apple-touch.png" sizes="180x180" />
+    <link rel="apple-touch-icon" href="/icons/wallet-apple-touch.png" sizes="180x180" />
     <title>Cash Tracker · Seu dinheiro, com clareza</title>
   </head>
   <body>
