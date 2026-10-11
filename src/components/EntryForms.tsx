@@ -24,8 +24,8 @@ import type {
 import { Modal } from "./Modal";
 import { useSaving } from "./Saving";
 
-const moneyText = (value: number) => formatMoney(value).replace(/R\$\s*/, "");
-const parsedAmount = (value: string) => {
+export const moneyText = (value: number) => formatMoney(value).replace(/R\$\s*/, "");
+export const parsedAmount = (value: string) => {
   if (!value.trim()) return null;
   const parsed = parseMoney(value);
   return typeof parsed === "number" && Number.isSafeInteger(parsed)
@@ -46,7 +46,7 @@ interface ValidationError {
 }
 const ValidationContext = createContext<{ error: ValidationError | null; errorId: string } | null>(null);
 
-function useFormError(id: string) {
+export function useFormError(id: string) {
   const [error, setError] = useState<ValidationError | null>(null);
   const showError = (message: string, field?: string) => {
     setError({ message, fieldId: field ? `${id}-${field}` : undefined });
@@ -62,7 +62,7 @@ function useFormError(id: string) {
   return [error, showError, clearError] as const;
 }
 
-function EntryForm({ children, id, error, clearError, onSubmit }: {
+export function EntryForm({ children, id, error, clearError, onSubmit }: {
   children: ReactNode;
   id: string;
   error: ValidationError | null;
@@ -79,7 +79,7 @@ function EntryForm({ children, id, error, clearError, onSubmit }: {
   );
 }
 
-function FormActions({
+export function FormActions({
   onClose,
   label = "Salvar",
   disabled = false,
@@ -105,7 +105,7 @@ function FormActions({
   );
 }
 
-function FormError({ error, id }: { error: ValidationError | null; id: string }) {
+export function FormError({ error, id }: { error: ValidationError | null; id: string }) {
   return error ? (
     <p className="form-error" role="alert" id={id} tabIndex={-1}>
       {error.message}
@@ -113,7 +113,7 @@ function FormError({ error, id }: { error: ValidationError | null; id: string })
   ) : null;
 }
 
-function Field({
+export function Field({
   label,
   children,
   hint,
@@ -146,7 +146,7 @@ function Field({
   );
 }
 
-function MoneyField({
+export function MoneyField({
   label,
   value,
   onChange,

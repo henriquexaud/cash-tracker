@@ -6,6 +6,7 @@ Aplicação para registrar manualmente quanto entrou, os gastos aproximados do m
 
 - Visão geral do mês, orçamento, histórico de salários e reserva.
 - Locais de reserva, aportes, retiradas, rendimentos e objetivos.
+- Divisões: grupos para despesas compartilhadas, com quem deve a quem e acertos, separados das finanças pessoais.
 - Cadastro, confirmação de e-mail, login e recuperação de senha pelo Supabase.
 - Dados separados por conta, gravação offline e sincronização entre dispositivos.
 - Temas claro e escuro e ocultação de valores.
@@ -44,7 +45,7 @@ Use o projeto existente na Vercel, com `npm run build` e saída `dist`. Configur
 
 Conecte o repositório GitHub ao projeto da Vercel para publicar os próximos commits da branch `main`. Mantenha o domínio já configurado para preservar os links de confirmação e recuperação.
 
-Em uma instalação nova, execute `supabase/schema.sql` no SQL Editor e configure as URLs de autenticação. Para o projeto já configurado, uma atualização do app não exige recriar tabelas ou importar dados.
+Em uma instalação nova, execute `supabase/schema.sql` e `supabase/splits.sql` no SQL Editor e configure as URLs de autenticação. Para o projeto já configurado, uma atualização do app não exige recriar tabelas ou importar dados; a versão que introduz Divisões exige executar `supabase/splits.sql` uma vez, antes de publicar.
 
 O domínio principal pode ser público: a autorização dos dados fica no Supabase. Mantenha as publicações antigas e as prévias protegidas. **Não publique o `dist/` de `build:local` ou `preview:local`; gere novamente com as variáveis cloud corretas.** Consulte [publicação](docs/deployment.md) e [contas e sincronização](docs/authentication.md) para configuração, funcionamento offline e limites.
 
@@ -53,6 +54,7 @@ O domínio principal pode ser público: a autorização dos dados fica no Supaba
 - `src/domain`: tipos, cálculos em centavos e dados iniciais vazios.
 - `src/auth`: autenticação e repositório por conta.
 - `src/sync`: cache IndexedDB, revisões e mesclagem.
+- `src/splits`: módulo Divisões (regras, repositórios, tela e testes).
 - `src/components`: formulários e controles compartilhados.
 - `src/test`: exemplos fictícios usados exclusivamente pelos testes.
 - `supabase`: esquema e verificações de isolamento.

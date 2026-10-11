@@ -59,6 +59,7 @@ O comando original mantém `--host 0.0.0.0`, permitindo acesso pela rede local. 
 | `npm run test:watch` | Vitest durante a edição. |
 | `npm run test:domain` / `test:storage` / `test:sync` | Testes da camada de dados afetada. |
 | `npm run test:auth` / `test:ui` / `test:pwa` | Testes dos fluxos e controles afetados. |
+| `npm run test:splits` | Regras, repositórios e tela de Divisões. |
 | `npm run test:harness` | Verificar o próprio checker com artefatos fictícios. |
 | `npm run build` | TypeScript e build no modo configurado no ambiente. |
 | `npm run check:build` | Conferir arquivos e precache do `dist` existente. |

@@ -19,6 +19,7 @@
     "test:auth": "vitest run src/auth",
     "test:ui": "vitest run src/dashboard.test.tsx src/first-use.test.tsx src/ux.test.tsx src/privacy.test.tsx src/theme.test.ts src/refinements.test.tsx",
     "test:pwa": "vitest run src/pwa.test.ts",
+    "test:splits": "vitest run src/splits",
     "test:harness": "node --test scripts/check-build.node-test.mjs",
     "check:build": "node scripts/check-build.mjs",
     "verify": "npm test && npm run test:harness && npm run build && npm run check:build"

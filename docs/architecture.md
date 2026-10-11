@@ -8,6 +8,7 @@
 | `src/App.tsx` | Navegação por hash, mês selecionado, carregamento, mutações, modais, backup e avisos. |
 | `src/Pages.tsx`, `src/components/` | Cinco telas, gráficos, histórico, formulários e controles. |
 | `src/domain/types.ts`, `finance.ts`, `empty.ts` | Modelo, centavos, cálculos/validações e estado inicial vazio. |
+| `src/splits/` | Divisões: regras de divisão/compensação, repositórios local e cloud, tela e formulários. Veja [Divisões](#divisões). |
 | `src/repository.ts`, `src/storage.ts` | Contrato do repositório, IndexedDB local e formato de backup. |
 | `src/auth/` | Login/recuperação, identidade offline e repositório cloud. |
 | `src/sync/` | Cache por conta, revisões por registro e materialização da mesclagem. |
@@ -15,6 +16,7 @@
 | `src/components/BrandMark.tsx`, `src/assets/brand/`, `public/icons/` | Logo compartilhada por tema, favicons e ícones de instalação; veja [branding.md](branding.md). |
 | `public/sw.js`, `vite.config.ts` | Shell offline, atualização e injeção do precache no build. |
 | `supabase/schema.sql`, `security.test.sql` | Documento privado por usuário, RPC de mesclagem e teste SQL. |
+| `supabase/splits.sql`, `splits.security.test.sql` | Tabelas, RLS e funções dos grupos compartilhados, com teste de isolamento. |
 | `scripts/` | Harness local e inspeção dos artefatos; não entra no bundle. |
 
 ## Modelo financeiro
@@ -45,6 +47,19 @@ No modo local, `cash-tracker/state/current` guarda `{ revision, data }`. A revis
 No modo cloud, `cash-tracker-accounts/accounts` usa a chave `[URL do projeto, UUID do usuário]`, com documento, pendência e offset do relógio. `applyEdit` altera a revisão apenas dos registros modificados. A RPC mescla atomicamente a linha do usuário; revisões antigas não sobrescrevem novas e tombstones preservam exclusões.
 
 `materialize` reconstrói `AppData`, preserva relações e permite detectar conflitos financeiros em `needsReview`. Correções graduais podem resolver uma conta por vez. O repositório expõe status, pendência de envio e mensagem operacional segura separadamente. Falha de atualização não implica edições pendentes; uma releitura do cache não apaga o erro de sync. Há tentativa de sync ao abrir, salvar, reconectar, focar/retornar à janela e a cada 15 segundos enquanto visível. Veja [authentication.md](authentication.md) para sessões, relógios, conflitos e limites.
+
+## Divisões
+
+Divisões é um módulo paralelo às cinco telas financeiras. O `App` apenas adiciona o item de menu, a rota `#splits` e entrega à `SplitsPage` um `SplitRepository`; o módulo não lê nem grava `AppData`, não entra no backup nem no sync financeiro, e nenhuma despesa compartilhada gera salário, gasto ou movimentação.
+
+- Rotas: `#splits` (grupos), `#splits/<id>` (grupo) e `#splits/join/<código>` (abre o formulário de convite e limpa o endereço).
+- Um lançamento tem valor em centavos, quem pagou e participantes. Despesa: dividida igualmente entre os participantes (todos, um só ou alguns). Acerto: quem pagou entregou o valor ao único participante. Os dois usam a mesma conta; não há divisão percentual.
+- Centavos que sobram ficam primeiro com quem pagou e depois seguem a ordem dos IDs, de modo que as cotas somam exatamente o valor e ninguém deve um valor arredondado para cima.
+- Saldo = pago − cotas; a soma do grupo é sempre zero. `debts` compensa as posições e produz no máximo um pagamento por par, casando o maior devedor com o maior credor. Um acerto novo não pode superar o valor em aberto; edições posteriores apenas recalculam os saldos.
+- Qualquer participante pode editar ou excluir lançamentos do grupo. Não há remoção de participante nem exclusão de grupo.
+- Modo cloud: `split_groups`, `split_members` e `split_entries` ficam no Supabase, que é a única fonte dos dados compartilhados. A leitura é limitada por RLS a quem participa; toda gravação passa por funções `security definer` que identificam a conta por `auth.uid()` e validam que pagador e participantes pertencem ao grupo. O convite é um código aleatório de 12 caracteres; quem o possui entra no grupo. Cada participante escolhe o nome exibido; e-mails não são compartilhados. **Não há cópia offline nem fila de envio:** sem internet a tela informa a falha e as demais continuam funcionando.
+- Modo local: os grupos ficam em `localStorage` (`cash-tracker-splits`), separados do IndexedDB financeiro; como não há contas, participantes são adicionados pelo nome. Conteúdo ilegível gera erro e não é sobrescrito.
+- Com o olho fechado, a tela oculta os valores e mantém nomes de grupos/pessoas e descrições.
 
 ## Preferências e modais
 

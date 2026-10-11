@@ -21,10 +21,14 @@ npm run verify
 | `sync/sync.test.ts` | Mesclagem, partições, exclusões, pendências, sessão incorreta, mensagens seguras, pendência real e correção gradual. | Rede/RPC são simuladas; não valida o Supabase publicado. |
 | `auth/*.test.*` | Configuração pública, formulários, callback e ciclo de sessão. | Não comprova envio de e-mails nem a política real do projeto. |
 | `first-use`, `dashboard`, `ux`, `privacy`, `theme`, `refinements` | Estados vazios, cálculos, filtros cronológicos, concorrência, recuperação, gravação ocupada, erros acessíveis, backup, preferências e ocultação. | jsdom não verifica layout, contraste, toque ou teclado virtual. |
+| `splits/domain.test.ts` | Cotas em centavos e sobras, 50/50, uma pessoa, selecionados, saldos, compensação, acertos totais/parciais e validações. | Não renderiza telas. |
+| `splits/repository.test.ts` | Armazenamento local próprio e ilegível preservado; chamadas cloud sem ID de dono, sessão de outra conta, mensagens seguras e resposta malformada. | Cliente Supabase simulado. |
+| `splits/splits.test.tsx` | Fluxo criar grupo → despesa → quem deve a quem → acerto/edição/exclusão, convite, olho fechado e ausência de gravação/leitura cruzada com as finanças. | jsdom; não verifica layout. |
 | `pwa.test.ts` | Registro/atualização e worker em ambiente simulado, incluindo versões/cache. | Não prova comportamento no Safari/Chrome instalado. |
 | `supabase/security.test.sql` | Acesso anônimo negado, isolamento, escrita direta negada e revisões antigas. | Execução separada em banco de teste; não integra `npm test`. |
+| `supabase/splits.security.test.sql` | Só participantes leem/gravam; convite por código; escrita direta e lançamentos inválidos negados; `financial_sync` intocada. | Execução separada em banco de teste; não integra `npm test`. |
 
-Testes relacionados podem ser executados pelos scripts `test:domain`, `test:storage`, `test:sync`, `test:auth`, `test:ui` e `test:pwa`. Não há cobertura de navegador automatizada nem CI hospedado configurado neste repositório. Um runner de CI pode usar o mesmo `npm ci` + `npm run verify`, sem segredos do Supabase.
+Testes relacionados podem ser executados pelos scripts `test:domain`, `test:storage`, `test:sync`, `test:auth`, `test:ui`, `test:pwa` e `test:splits`. Não há cobertura de navegador automatizada nem CI hospedado configurado neste repositório. Um runner de CI pode usar o mesmo `npm ci` + `npm run verify`, sem segredos do Supabase.
 
 ## Roteiro manual local
 
@@ -43,6 +47,7 @@ Use `npm run dev:local`, com origem e dados fictícios. Exemplos: salário R$ 3.
 | Teclado | Foco inicial, Tab/Shift+Tab no modal, Escape, retorno ao botão e gráfico por setas/Home/End. |
 | Persistência | Recarregar/reabrir; editar gasto na aba A, excluir na B e salvar na A: manter rascunho e explicar o erro. Simular save lento/falho: uma gravação, controles bloqueados durante o commit e reabilitados após erro. |
 | Backup | Exportar fictício: feedback de download iniciado; se a data não puder ser gravada, indicar os dois resultados. Restaurar válido com confirmação; rejeitar JSON inválido/arquivo acima de 20 MiB. Recuperação inicial: local oferece restore; cloud orienta abrir a conta antes. Legado pendente permite confirmar o saldo uma vez. |
+| Divisões | Criar grupo, adicionar Bia e Caio, despesa de R$ 100,00 entre todos: Bia e Caio devem R$ 33,33 cada. Acerto parcial e total, edição e exclusão recalculam o resumo. Salário, orçamento e reserva não mudam. Barra inferior com seis itens em 320/390 px. |
 | Aparência | Claro/escuro; 320/390 px e desktop; nomes/notas longos, valores grandes, mensagens e rolagem. |
 
 Após editar campos, clique fora não fecha o modal. Cancelar, X e Escape continuam descartando o rascunho; durante gravação, o fechamento e os campos ficam bloqueados. Não há uma confirmação adicional de descarte. Para backup, somente use arquivos fictícios em uma origem de teste.
@@ -62,7 +67,7 @@ Use `npm run preview:local`. O preview recompila `dist` como local; não publiqu
 
 Configure um projeto de teste conforme [authentication.md](authentication.md), com duas contas fictícias. Verifique cadastro/confirmar/reenviar, login, recuperação, callbacks inválidos, duas contas no mesmo navegador e dois dispositivos com edições offline. Depois confira convergência, exclusões, pendências e correção do saldo em conflito.
 
-Execute `supabase/security.test.sql` após o schema no projeto de teste. O script usa uma transação com fixtures e termina em `ROLLBACK`. Se o editor interromper na primeira falha, finalize a transação com `ROLLBACK` antes de repetir. Não automatize com credenciais de produção.
+Execute `supabase/security.test.sql` e `supabase/splits.security.test.sql` após os schemas no projeto de teste. Para Divisões, confira também com duas contas: convite por link/código, a mesma despesa visível para ambas e uma terceira conta sem acesso. Cada script usa uma transação com fixtures e termina em `ROLLBACK`. Se o editor interromper na primeira falha, finalize a transação com `ROLLBACK` antes de repetir. Não automatize com credenciais de produção.
 
 ## Como registrar resultados
 

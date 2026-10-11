@@ -2,7 +2,7 @@
 
 ## Produto e escopo
 
-O app é um registro manual e simples de salários, estimativas de gastos e reserva. Preserve as cinco telas, a navegação, os temas, a hierarquia visual e a diferença entre planejamento e dinheiro efetivamente guardado.
+O app é um registro manual e simples de salários, estimativas de gastos e reserva. Preserve as cinco telas financeiras, o módulo isolado Divisões, a navegação, os temas, a hierarquia visual e a diferença entre planejamento e dinheiro efetivamente guardado.
 
 - Faça a menor alteração que resolva o pedido. Não adicione funcionalidades, dependências, refatorações amplas ou reorganização do layout por iniciativa própria.
 - Em pedidos de revisão, entregue achados com impacto, reprodução e evidência. Não implemente correções sem que façam parte do escopo autorizado.
@@ -25,6 +25,7 @@ O app é um registro manual e simples de salários, estimativas de gastos e rese
 - Falha de leitura é diferente de banco vazio. Não inicialize dados sobre um estado ilegível.
 - Uma gravação só é bem-sucedida após o commit local no IndexedDB. Falha de rede não pode descartar uma edição já salva.
 - No modo cloud, preserve partições por projeto/usuário, revisões por registro, tombstones, mesclagem e correção de conflitos. Não substitua o documento inteiro no servidor.
+- Divisões (`src/splits`, `supabase/splits.sql`) é um módulo à parte: não lê nem grava `AppData`, backup, orçamento ou reserva, e nenhuma despesa compartilhada vira lançamento pessoal. Só participantes acessam um grupo; toda gravação passa pelas funções SQL. Veja [architecture.md](docs/architecture.md#divisões).
 - O servidor determina o proprietário por `auth.uid()`. Não use chave secreta/service role no navegador nem remova RLS.
 - O olho protege a apresentação das telas principais. Modais revelam seus próprios campos; backups contêm valores reais. Não mude esse contrato silenciosamente.
 - Preserve navegação por teclado, foco do modal, labels, feedback acessível, temas e usabilidade em telas estreitas.

@@ -4,7 +4,7 @@ O modo por conta usa Supabase Auth com e-mail e senha. Cada usuário possui um d
 
 ## Ativar em outra instalação
 
-1. Execute `supabase/schema.sql` no SQL Editor do seu projeto. O script cria apenas `financial_sync`, sua política de leitura e a função de mesclagem. Pode ser executado novamente.
+1. Execute `supabase/schema.sql` no SQL Editor do seu projeto. O script cria apenas `financial_sync`, sua política de leitura e a função de mesclagem. Depois execute `supabase/splits.sql`, que cria as tabelas, políticas e funções de Divisões sem alterar `financial_sync`. Ambos podem ser executados novamente.
 2. Configure as três variáveis de `.env.example` no ambiente de build: `VITE_STORAGE_MODE=cloud`, URL HTTPS do projeto e chave `sb_publishable_…`. Configure também as variáveis na hospedagem; `.env.local` não é enviado pelo Git.
 3. Em **Supabase → Authentication → URL Configuration**, defina **Site URL** com o domínio público do app e adicione esse domínio, incluindo a barra final, em **Redirect URLs**. Salve ambos. Adicione os endereços de desenvolvimento somente se usados; não deixe `http://localhost:3000` como Site URL de produção. A confirmação de cadastro e a recuperação usam esse endereço. Mantenha confirmação de e-mail habilitada para novos usuários e configure SMTP para enviar mensagens a usuários fora da organização/projeto. Modelos de e-mail devem usar `{{ .ConfirmationURL }}` para o link completo de confirmação.
 4. Faça o build, teste o login e a PWA em ambiente de teste, publique e abra a versão publicada uma vez com internet em cada dispositivo. Confirme que o service worker instalou e controla a página; a interface atual de Configurações não mostra um indicador específico de cache offline pronto. Veja [verification.md](verification.md).
@@ -22,6 +22,8 @@ O armazenamento antigo é preservado. O armazenamento por conta usa uma partiç�
 ## O que funciona offline
 
 Após o primeiro acesso online e o preparo da PWA, as cinco telas, consultas, lançamentos, edições, exclusões e backups funcionam sem internet. A gravação termina depois de confirmar uma transação local IndexedDB; nunca fica dependendo de uma resposta da rede. Fechar e reabrir preserva as edições pendentes.
+
+Divisões é a exceção: os grupos são compartilhados e ficam apenas no servidor, então consultar ou registrar despesas e acertos exige internet. Sem conexão, a tela mostra o erro com a opção de tentar novamente.
 
 A última identidade autenticada permite abrir a cópia offline mesmo depois de o token expirar. Ela não autoriza operações no servidor: o Supabase continua validando o token e o dono de cada chamada. Cadastro, primeiro login em um dispositivo, recuperação de senha e comunicação entre dispositivos exigem internet. Sem conexão, cada dispositivo tem sua última cópia; os outros só recebem as mudanças ao reconectar.
 
@@ -49,6 +51,7 @@ Duas retiradas offline diferentes podem, quando combinadas, exceder o saldo. O a
 | Orçamento | Valores unitários, totais, estimativa livre e reserva | Nome/categoria do gasto, tipo, frequência e repetições |
 | Histórico | Salários, totais, médias/variações e gráficos | Datas, períodos e quantidade de registros |
 | Reserva | Saldos, aportes, retiradas, rendimentos, metas, percentuais, gráficos, nomes dos locais/objetivos e notas pessoais | Data, tipo de movimentação e ações |
+| Divisões | Saldos, valores de despesas e acertos | Nomes de grupos e pessoas, descrições, datas e ações |
 | Configurações | E-mail da conta e valores do orçamento-base | Tema, estado offline/sincronização, datas de backup e contagens |
 | Formulários | A ocultação das telas principais não se aplica ao modal de edição | Campos monetários, nomes, notas, datas e categorias |
 
@@ -68,6 +71,7 @@ Telas vazias orientam o primeiro registro e evitam gráficos sem dados ou refer�
 - `npm run build`: TypeScript e build de produção; `npm run check:build` confere os arquivos e o precache gerados.
 - `npm run verify`: testes do app/harness, TypeScript/build e inspeção do precache. Não executa os checks SQL ou de navegador real.
 - `supabase/security.test.sql`: isolamento entre dois usuários, negação de acesso anônimo, negação de escrita direta e mesclagem sem sobrescrita por revisões antigas. Execute após o esquema; fixtures são desfeitas com `ROLLBACK`.
+- `supabase/splits.security.test.sql`: acesso anônimo negado, grupo invisível antes do convite, código errado recusado, escrita direta negada, não participante sem leitura/edição/exclusão e validação de pagador/participantes. Execute após os dois esquemas; fixtures são desfeitas com `ROLLBACK`.
 - Uma publicação antiga com dados pessoais em assets/cache precisa continuar protegida; o build novo não torna privados assets publicados anteriormente. A produção atual usa Standard Protection na Vercel: domínio principal público, endereços históricos e de prévia protegidos. Autenticação e autorização dos dados do aplicativo ficam no Supabase.
 
 Referências: [Supabase Auth](https://supabase.com/docs/guides/auth/passwords), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [chaves de API](https://supabase.com/docs/guides/getting-started/api-keys), [funções de banco](https://supabase.com/docs/guides/database/functions).

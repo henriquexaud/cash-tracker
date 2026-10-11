@@ -10,7 +10,7 @@ import type {
 } from "./domain/types";
 import type { ThemeSettings } from "./theme";
 
-export type Page = "dashboard" | "budget" | "history" | "wealth" | "settings";
+export type Page = "dashboard" | "budget" | "history" | "wealth" | "splits" | "settings";
 export interface Actions {
   navigate: (page: Page) => void;
   editSalary: (salary?: Salary, month?: Month) => void;

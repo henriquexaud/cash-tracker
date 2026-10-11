@@ -6,7 +6,7 @@ Este guia descreve o procedimento. Revisar/documentar o projeto não publica uma
 
 1. Use o projeto Vercel existente e preserve o domínio configurado nos redirects. O projeto usa Vite, `npm run build` e saída `dist/`, conforme `vercel.json`.
 2. Confira as variáveis de ambiente do destino: `VITE_STORAGE_MODE=cloud`, `VITE_SUPABASE_URL` HTTPS e `VITE_SUPABASE_PUBLISHABLE_KEY` pública `sb_publishable_…`. Vite incorpora essas variáveis no build; mudar apenas o ambiente do preview não reconfigura um bundle pronto.
-3. Use [authentication.md](authentication.md) para schema, redirects, confirmação de e-mail e SMTP. Uma atualização comum do frontend não exige recriar o banco.
+3. Use [authentication.md](authentication.md) para schema, redirects, confirmação de e-mail e SMTP. Uma atualização comum do frontend não exige recriar o banco. A primeira versão com Divisões exige executar `supabase/splits.sql` no projeto antes de publicar; sem ele, apenas a tela Divisões mostra erro.
 4. Execute `npm run verify`. Para validar comportamento cloud, use também um ambiente de teste configurado; o build pode compilar mesmo sem uma configuração de conta utilizável.
 5. Se o último comando foi `build:local` ou `preview:local`, gere novamente o build com ambiente cloud correto. `dist` local é para revisão e não deve ser enviado aos usuários.
 

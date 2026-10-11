@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   TrendingUp,
   Sun,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -73,16 +74,19 @@ import {
 } from "./Pages";
 import type { Actions, AuthAccount, Page, PageProps } from "./ui-types";
 import { useTheme } from "./theme";
+import { SplitsPage } from "./splits/SplitsPage";
+import { localSplitRepository, type SplitRepository } from "./splits/repository";
 
 const navigation: { id: Page; label: string; icon: typeof Wallet }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
   { id: "budget", label: "Orçamento", icon: ListFilter },
   { id: "history", label: "Histórico", icon: TrendingUp },
   { id: "wealth", label: "Reserva", icon: Wallet },
+  { id: "splits", label: "Divisões", icon: Users },
   { id: "settings", label: "Configurações", icon: Settings2 },
 ];
 const readPage = (): Page =>
-  navigation.find((p) => `#${p.id}` === location.hash)?.id ?? "dashboard";
+  navigation.find((p) => `#${p.id}` === location.hash.split("/")[0])?.id ?? "dashboard";
 const lock = async <T,>(task: () => Promise<T>): Promise<T> =>
   navigator.locks
     ? await navigator.locks.request("cash-tracker-data", task)
@@ -115,9 +119,11 @@ function downloadBackup(data: AppData, prefix = "cash-tracker") {
 export default function App({
   repository = localRepository,
   account,
+  splits = localSplitRepository,
 }: {
   repository?: DataRepository;
   account?: AuthAccount;
+  splits?: SplitRepository;
 }) {
   const { load: loadData, save: saveData } = repository;
   const readSyncState = () => {
@@ -879,7 +885,7 @@ export default function App({
     account,
     storageMode: repository.mode,
   };
-  const CurrentPage = {
+  const CurrentPage = page === "splits" ? null : {
     dashboard: DashboardPage,
     budget: BudgetPage,
     history: HistoryPage,
@@ -962,6 +968,7 @@ export default function App({
                     budget: "Orçamento",
                     history: "Histórico",
                     wealth: "Reserva",
+                    splits: "Divisões",
                     settings: "Configurações",
                   }[page]
                 }
@@ -975,12 +982,13 @@ export default function App({
                     history:
                       "Salários e orçamentos, desde os primeiros registros.",
                     wealth: "Acompanhe o dinheiro que você guardou de fato.",
+                    splits: "Despesas compartilhadas e quem deve a quem.",
                     settings: "Personalize o app e cuide dos seus dados.",
                   }[page]
                 }
               </p>
             </div>
-            {page !== "settings" && (
+            {page !== "settings" && page !== "splits" && (
               <div className="month-picker">
                 <button
                   className="icon-button"
@@ -1073,7 +1081,15 @@ export default function App({
                 </button>
               </div>
             )}
-          <CurrentPage {...props} />
+          {CurrentPage ? (
+            <CurrentPage {...props} />
+          ) : (
+            <SplitsPage
+              repository={splits}
+              email={account?.email}
+              notify={(text, error) => setNotice({ text, error })}
+            />
+          )}
         </main>
       </div>
       {modal}

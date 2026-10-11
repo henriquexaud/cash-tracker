@@ -2496,3 +2496,165 @@ textarea.input {
     flex-wrap: wrap;
   }
 }
+
+/* Divisões: shared groups reuse panels, rows and forms from the other pages. */
+.split-heading {
+  flex-wrap: wrap;
+}
+.split-back {
+  margin-bottom: 8px;
+}
+.split-group-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 18px 0;
+  color: var(--text);
+}
+.split-group-row:first-of-type {
+  margin-top: 8px;
+}
+.split-group-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.split-group-row:hover strong {
+  color: var(--green);
+}
+.split-group-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.split-group-row strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.split-group-row div > span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.split-group-row > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.split-balance {
+  font-size: 13px;
+  font-weight: 550;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.split-balance.positive {
+  color: var(--positive);
+}
+.split-balance.negative {
+  color: var(--negative);
+}
+.split-summary {
+  margin-bottom: 24px;
+}
+.split-summary h2 {
+  overflow-wrap: anywhere;
+}
+.split-debts {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+  border-top: 1px solid var(--border-soft);
+}
+.split-debts li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.split-debts li:last-child {
+  border-bottom: 0;
+}
+.split-debts li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.split-debts .text-button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 5px 4px;
+}
+.split-clear {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.split-checks {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.split-checks legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.split-checks label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.split-checks input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+.input.split-code {
+  font-size: 20px;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.page-splits .movement-main strong {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 370px) {
+  /* On the narrowest phones a two-word label stacks to leave room between tabs. */
+  .nav-link span {
+    width: min-content;
+  }
+}
+@media (max-width: 760px) {
+  /* Six destinations: each tab takes the width of its label instead of an equal column. */
+  .nav-link {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .split-heading .settings-actions {
+    width: 100%;
+  }
+  .split-group-row {
+    flex-wrap: wrap;
+  }
+  .split-balance {
+    flex-basis: 100%;
+    order: 3;
+    margin-left: 44px;
+    text-align: left;
+  }
+}

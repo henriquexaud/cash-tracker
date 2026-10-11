@@ -4,6 +4,7 @@ import { BrandMark } from "../components/BrandMark";
 import App from "../App";
 import { createAuthClient, readCloudConfig } from "./client";
 import { createCloudRepository } from "./cloud-repository";
+import { createCloudSplitRepository } from "../splits/cloud-repository";
 import { AuthForm } from "./AuthForm";
 import { identityStore, type AccountIdentity } from "./offline-identity";
 import { authReturnNotice, cleanAuthReturn, readAuthReturn } from "./return";
@@ -22,6 +23,10 @@ function AccountApp({
     () => createCloudRepository(client, identity.id, project),
     [client, identity.id, project],
   );
+  const splits = useMemo(
+    () => createCloudSplitRepository(client, identity.id),
+    [client, identity.id],
+  );
   const lifecycle = useRef(0);
   useEffect(() => {
     const generation = ++lifecycle.current;
@@ -34,6 +39,7 @@ function AccountApp({
   return (
     <App
       repository={repository}
+      splits={splits}
       account={{
         id: identity.id,
         email: identity.email ?? "Sua conta",
