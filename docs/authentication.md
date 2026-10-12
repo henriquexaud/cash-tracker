@@ -55,7 +55,7 @@ Duas retiradas offline diferentes podem, quando combinadas, exceder o saldo. O a
 | Configurações | E-mail da conta e valores do orçamento-base | Tema, estado offline/sincronização, datas de backup e contagens |
 | Formulários | A ocultação das telas principais não se aplica ao modal de edição | Campos monetários, nomes, notas, datas e categorias |
 
-Gráficos e barras de progresso são retirados da renderização quando ocultos, inclusive seus rótulos acessíveis. O botão de olho aparece apenas nas telas principais. Modais mostram os campos e informações para consulta e edição, sem alterar a preferência de ocultação da tela principal. A preferência é aplicada antes dos dados e persistida por dispositivo, separada da conta e do backup.
+Gráficos e barras de progresso são retirados da renderização quando ocultos, inclusive seus rótulos acessíveis. O botão de olho aparece apenas nas telas principais. Modais mostram os campos e informações para consulta e edição, sem alterar a preferência de ocultação da tela principal. A preferência é aplicada antes dos dados e persistida por dispositivo, separada da conta e do backup. Notificações de Divisões, quando ativadas, mostram valores fora do app e não seguem essa preferência; veja [notifications.md](notifications.md).
 
 Erros operacionais sem valores/nomes pessoais continuam visíveis com o olho fechado. Mensagens de integridade do backup não interpolam IDs do arquivo, e exceções arbitrárias do provedor são substituídas por mensagens seguras no aviso de sincronização.
 

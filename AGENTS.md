@@ -27,7 +27,7 @@ O app é um registro manual e simples de salários, estimativas de gastos e rese
 - No modo cloud, preserve partições por projeto/usuário, revisões por registro, tombstones, mesclagem e correção de conflitos. Não substitua o documento inteiro no servidor.
 - Divisões (`src/splits`, `supabase/splits.sql`) é um módulo à parte: não lê nem grava `AppData`, backup, orçamento ou reserva, e nenhuma despesa compartilhada vira lançamento pessoal. Só participantes acessam um grupo; toda gravação passa pelas funções SQL. Veja [architecture.md](docs/architecture.md#divisões).
 - O servidor determina o proprietário por `auth.uid()`. Não use chave secreta/service role no navegador nem remova RLS.
-- O olho protege a apresentação das telas principais. Modais revelam seus próprios campos; backups contêm valores reais. Não mude esse contrato silenciosamente.
+- O olho protege a apresentação das telas principais. Modais revelam seus próprios campos; backups e notificações de Divisões contêm valores reais. Não mude esse contrato silenciosamente.
 - Preserve navegação por teclado, foco do modal, labels, feedback acessível, temas e usabilidade em telas estreitas.
 - A logo oficial é a carteira verde e creme. Use `BrandMark` no carregamento, alternando as versões transparentes pelo tema; menu, cabeçalho e login usam apenas o nome. Mantenha favicons/ícones de instalação derivados das imagens oficiais, conforme [branding.md](docs/branding.md).
 - O service worker só é registrado no build de produção. Todos os arquivos gerados, inclusive chunks lazy, devem entrar no precache.

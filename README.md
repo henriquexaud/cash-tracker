@@ -10,6 +10,7 @@ Aplicação para registrar manualmente quanto entrou, os gastos aproximados do m
 - Cadastro, confirmação de e-mail, login e recuperação de senha pelo Supabase.
 - Dados separados por conta, gravação offline e sincronização entre dispositivos.
 - Temas claro e escuro e ocultação de valores.
+- Notificações push opcionais: lembrete mensal para lançar o salário e montar o orçamento, e avisos de lançamentos em Divisões.
 - Backup e restauração em JSON, com validação antes de substituir os registros.
 
 Toda instalação e conta nova começa vazia. O código não contém salários, gastos, saldos ou dados pessoais de usuários. Testes usam apenas dados fictícios.
@@ -44,6 +45,8 @@ Use o projeto existente na Vercel, com `npm run build` e saída `dist`. Configur
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública `sb_publishable_…` |
 
 Conecte o repositório GitHub ao projeto da Vercel para publicar os próximos commits da branch `main`. Mantenha o domínio já configurado para preservar os links de confirmação e recuperação.
+
+As notificações push são opcionais e exigem a configuração descrita em [notificações](docs/notifications.md): chaves VAPID, `VITE_VAPID_PUBLIC_KEY`, a Edge Function `push` e `supabase/notifications.sql`.
 
 Em uma instalação nova, execute `supabase/schema.sql` e `supabase/splits.sql` no SQL Editor e configure as URLs de autenticação. Para o projeto já configurado, uma atualização do app não exige recriar tabelas ou importar dados; a versão que introduz Divisões exige executar `supabase/splits.sql` uma vez, antes de publicar.
 

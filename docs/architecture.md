@@ -14,6 +14,8 @@
 | `src/auth/` | Login/recuperação, identidade offline e repositório cloud. |
 | `src/sync/` | Cache por conta, revisões por registro e materialização da mesclagem. |
 | `src/privacy.tsx`, `src/theme.ts`, `src/styles.css` | Preferências do dispositivo, apresentação e responsividade. |
+| `src/notifications.ts`, `src/auth/push.ts`, `src/components/NotificationSettings.tsx` | Preferências, inscrição push do dispositivo e lembrete do modo local. Veja [Notificações](#notificações). |
+| `supabase/notifications.sql`, `notifications.security.test.sql`, `supabase/functions/push/` | Dispositivos inscritos, gatilho/agenda e Edge Function que envia as notificações. |
 | `src/components/BrandMark.tsx`, `src/assets/brand/`, `public/icons/` | Logo compartilhada por tema, favicons e ícones de instalação; veja [branding.md](branding.md). |
 | `public/sw.js`, `vite.config.ts` | Shell offline, atualização e injeção do precache no build. |
 | `supabase/schema.sql`, `security.test.sql` | Documento privado por usuário, RPC de mesclagem e teste SQL. |
@@ -66,13 +68,17 @@ Divisões é um módulo paralelo às cinco telas financeiras. O `App` apenas adi
 
 ## Preferências e modais
 
-Tema, ocultação e identidade offline usam chaves próprias em localStorage. Tema/ocultação são por dispositivo e não integram o backup. A identidade só permite abrir o cache local; não substitui a autorização do servidor.
+Tema, ocultação, notificações e identidade offline usam chaves próprias em localStorage. Tema/ocultação/notificações são por dispositivo e não integram o backup. A identidade só permite abrir o cache local; não substitui a autorização do servidor.
 
 O `Modal` é um portal com foco inicial, contenção do foco, retorno ao disparador e bloqueio de rolagem do corpo. Seu contexto de privacidade revela os campos do diálogo sem mudar a preferência da tela. As telas principais escondem dinheiro, gráficos e outros campos definidos no contrato de [privacidade](authentication.md#privacidade-na-interface).
 
 O contexto compartilhado `SavingContext` chega também aos portais e modais guardados em estado. Campos, salvar/confirmar e fechar ficam bloqueados durante o commit; o botão indica a ação em andamento. A validação associa o erro ao campo com `aria-invalid`/`aria-describedby`, preserva a dica e limpa a mensagem ao editar o campo responsável. Erros gerais são limpos na próxima edição.
 
 Um clique fora não descarta campos editados. Cancelar, X e Escape mantêm o fechamento explícito, sem confirmação extra. Mensagens operacionais seguras continuam legíveis com o olho fechado; caminhos de erro do backup não interpolam IDs fornecidos pelo arquivo.
+
+## Notificações
+
+Lembrete mensal e avisos de Divisões são opcionais e por dispositivo. No modo cloud são notificações push enviadas pelo servidor, com o app fechado: inscrição do navegador gravada por `push_subscribe`, gatilho em `split_entries` e `pg_cron` chamando a Edge Function `supabase/functions/push`. No modo local há apenas o lembrete, verificado com o app aberto. A notificação de Divisões mostra valores e não segue o olho. Configuração, fluxo e limites estão em [notifications.md](notifications.md).
 
 ## Histórico
 

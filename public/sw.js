@@ -91,6 +91,38 @@ self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
 
+self.addEventListener("push", (event) => {
+  let message = {};
+  try {
+    message = event.data?.json() ?? {};
+  } catch {
+    /* A push must always show something, even with an unreadable payload. */
+  }
+  event.waitUntil(
+    self.registration.showNotification(String(message.title || "Cash Tracker"), {
+      body: String(message.body || ""),
+      tag: message.tag ? String(message.tag) : undefined,
+      icon: "/icons/wallet-192.png",
+      data: { url: String(message.url || "") },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = String(event.notification.data?.url ?? "");
+  const hash = url.startsWith("#") ? url : "";
+  event.waitUntil(
+    (async () => {
+      const [client] = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      if (!client) return self.clients.openWindow("/" + hash);
+      await client.focus();
+      // The page applies the hash itself; the worker never reloads an open app.
+      client.postMessage({ type: "OPEN_HASH", hash });
+    })(),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);

@@ -202,6 +202,48 @@ describe("cabeçalho e configurações", () => {
     expect(sync).toHaveBeenCalledOnce();
   });
 
+  it.each(["local", "cloud"] as const)("configura notificações no modo %s com opções separadas e grade de dias", async (storageMode) => {
+    let permission = "default";
+    const requestPermission = vi.fn(async () => (permission = "denied"));
+    vi.stubGlobal("Notification", class {
+      static get permission() { return permission; }
+      static requestPermission = requestPermission;
+    });
+    vi.stubGlobal("PushManager", class {});
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: async () => undefined } });
+    const push = storageMode === "cloud" ? { save: vi.fn(async () => {}), remove: vi.fn(async () => {}) } : undefined;
+    const stored = () => JSON.parse(window.localStorage.getItem("cash-tracker-notifications")!);
+    render(<SettingsPage data={createEmptyData()} month={currentMonth()} actions={{} as Actions}
+      setMonth={vi.fn()} offlineReady persistent={false} canInstall storageMode={storageMode} push={push}
+      theme={{ preference: "light", resolvedTheme: "light", setPreference: vi.fn() }} />);
+    const section = screen.getByRole("heading", { name: "Notificações" }).closest("section") as HTMLElement;
+    expect(within(section).queryByRole("group", { name: "Dia do lembrete" })).toBeNull();
+    const reminder = within(section).getByRole("switch", { name: "Lembrete do mês" });
+    fireEvent.click(reminder);
+    expect(reminder.getAttribute("aria-checked")).toBe("true");
+    expect(requestPermission).toHaveBeenCalledOnce();
+    const days = within(within(section).getByRole("group", { name: "Dia do lembrete" }));
+    expect(days.getAllByRole("button")).toHaveLength(31);
+    expect(days.getByRole("button", { name: "Dia 5" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(days.getByRole("button", { name: "Dia 31" }));
+    expect(days.getByRole("button", { name: "Dia 31" }).getAttribute("aria-pressed")).toBe("true");
+    expect(stored()).toEqual({ reminderDay: 31, splits: false });
+    expect(within(section).getByText(/último dia dos meses mais curtos/)).toBeTruthy();
+    expect(await within(section).findByText(/notificações estão bloqueadas/)).toBeTruthy();
+    const splits = within(section).queryByRole("switch", { name: "Avisos de Divisões" });
+    if (storageMode === "local") {
+      expect(splits).toBeNull();
+    } else {
+      fireEvent.click(splits!);
+      expect(stored()).toEqual({ reminderDay: 31, splits: true });
+      fireEvent.click(reminder);
+      expect(stored()).toEqual({ reminderDay: null, splits: true });
+      expect(splits!.getAttribute("aria-checked")).toBe("true");
+      expect(within(section).queryByRole("group", { name: "Dia do lembrete" })).toBeNull();
+    }
+    Reflect.deleteProperty(navigator, "serviceWorker");
+  });
+
   it.each(["local", "cloud"] as const)("explica a gravação %s e preserva as ações de backup e instalação", (storageMode) => {
     const backup = vi.fn(), restore = vi.fn(), install = vi.fn(), instructions = vi.fn(), protection = vi.fn();
     const actions = {

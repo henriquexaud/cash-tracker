@@ -38,6 +38,7 @@ import { Select } from "./components/Select";
 import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
 import { useHistoryYear } from "./components/useHistoryYear";
+import { NotificationSettings } from "./components/NotificationSettings";
 import { DashboardActivity, DashboardPlanning } from "./components/DashboardDetails";
 import { ThemePicker } from "./components/ThemePicker";
 import { useInstalledApp } from "./components/InstallGuide";
@@ -1048,7 +1049,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
 }
 
 export function SettingsPage({
-  data, actions, persistent, canInstall, theme, account, storageMode,
+  data, actions, persistent, canInstall, theme, account, storageMode, push,
 }: PageProps) {
   const { protect } = usePrivacy();
   const installed = useInstalledApp();
@@ -1061,6 +1062,8 @@ export function SettingsPage({
         </div>
         <ThemePicker {...theme} />
       </section>
+
+      <NotificationSettings data={data} push={push} />
 
       <section className="panel settings-block" aria-labelledby="settings-data-title">
         <div className="settings-section-heading">

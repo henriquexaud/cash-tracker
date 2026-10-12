@@ -9,6 +9,7 @@
 | [Marca e ícones](branding.md) | Logo oficial, versões por tema, favicons e imagens de instalação. |
 | [Verificação e harness](verification.md) | Suítes, checks de build e roteiro manual. |
 | [Contas e sincronização](authentication.md) | Supabase, sessões, offline, conflitos e privacidade. |
+| [Notificações](notifications.md) | Configurar o push (chaves, Edge Function, SQL), entender o fluxo e os limites. |
 | [Publicação](deployment.md) | Checklist de build cloud, configuração e validação da publicação. |
 | [Revisão e correções — 05/10/2026](review-2026-10-05.md) | Achados, correções concluídas, evidências e limites da validação. |
 

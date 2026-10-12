@@ -5,6 +5,7 @@ import App from "../App";
 import { createAuthClient, readCloudConfig } from "./client";
 import { createCloudRepository } from "./cloud-repository";
 import { createCloudSplitRepository } from "../splits/cloud-repository";
+import { createPushServer } from "./push";
 import { AuthForm } from "./AuthForm";
 import { identityStore, type AccountIdentity } from "./offline-identity";
 import { authReturnNotice, cleanAuthReturn, readAuthReturn } from "./return";
@@ -27,6 +28,7 @@ function AccountApp({
     () => createCloudSplitRepository(client, identity.id),
     [client, identity.id],
   );
+  const push = useMemo(() => createPushServer(client, identity.id), [client, identity.id]);
   const lifecycle = useRef(0);
   useEffect(() => {
     const generation = ++lifecycle.current;
@@ -40,6 +42,7 @@ function AccountApp({
     <App
       repository={repository}
       splits={splits}
+      push={push}
       account={{
         id: identity.id,
         email: identity.email ?? "Sua conta",

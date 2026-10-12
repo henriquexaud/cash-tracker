@@ -76,6 +76,14 @@ import type { Actions, AuthAccount, Page, PageProps } from "./ui-types";
 import { useTheme } from "./theme";
 import { SplitsPage } from "./splits/SplitsPage";
 import { localSplitRepository, type SplitRepository } from "./splits/repository";
+import {
+  checkLocalReminder,
+  completedMonth,
+  readPrefs,
+  removePush,
+  syncPush,
+  type PushServer,
+} from "./notifications";
 
 const navigation: { id: Page; label: string; icon: typeof Wallet }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
@@ -121,10 +129,12 @@ export default function App({
   repository = localRepository,
   account,
   splits = localSplitRepository,
+  push,
 }: {
   repository?: DataRepository;
   account?: AuthAccount;
   splits?: SplitRepository;
+  push?: PushServer;
 }) {
   const { load: loadData, save: saveData } = repository;
   const readSyncState = () => {
@@ -268,6 +278,37 @@ export default function App({
       window.removeEventListener("beforeinstallprompt", install);
       window.removeEventListener("appinstalled", installed);
     };
+  }, []);
+  const loaded = !!data;
+  const doneMonth = data ? completedMonth(data, new Date()) : null;
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  useEffect(() => {
+    if (!loaded) return;
+    // With an account the server notifies; this only keeps the device's subscription current.
+    if (push) {
+      void syncPush(push, readPrefs(), doneMonth);
+      return;
+    }
+    const check = () => {
+      if (dataRef.current) void checkLocalReminder(dataRef.current);
+    };
+    check();
+    const timer = setInterval(check, 60000);
+    window.addEventListener("focus", check);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
+  }, [loaded, doneMonth]);
+  useEffect(() => {
+    // A clicked notification asks the open app to show the related screen.
+    const open = (event: MessageEvent) => {
+      const hash = event.data?.type === "OPEN_HASH" ? event.data.hash : "";
+      if (typeof hash === "string" && hash.startsWith("#")) location.hash = hash;
+    };
+    navigator.serviceWorker?.addEventListener("message", open);
+    return () => navigator.serviceWorker?.removeEventListener("message", open);
   }, []);
   useEffect(() => {
     if (!notice || notice.error) return;
@@ -816,7 +857,10 @@ export default function App({
           "Sair desta conta?",
           "Seus registros continuarão na sua conta. Para usar o app novamente neste dispositivo, entre com internet.",
           () =>
-            void withSaving(() => account.signOut()).catch((error) =>
+            void withSaving(async () => {
+              if (push) await removePush(push);
+              await account.signOut();
+            }).catch((error) =>
               setNotice({
                 text:
                   error instanceof Error
@@ -885,6 +929,7 @@ export default function App({
     theme,
     account,
     storageMode: repository.mode,
+    push,
   };
   const CurrentPage = page === "splits" ? null : {
     dashboard: DashboardPage,

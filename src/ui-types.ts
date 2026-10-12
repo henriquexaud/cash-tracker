@@ -9,6 +9,7 @@ import type {
   Salary,
 } from "./domain/types";
 import type { ThemeSettings } from "./theme";
+import type { PushServer } from "./notifications";
 
 export type Page = "dashboard" | "budget" | "history" | "wealth" | "splits" | "settings";
 export interface Actions {
@@ -49,4 +50,6 @@ export interface PageProps {
   persistent: boolean;
   canInstall: boolean;
   theme: ThemeSettings;
+  /** Present with an account: notifications reach this device with the app closed. */
+  push?: PushServer;
 }
