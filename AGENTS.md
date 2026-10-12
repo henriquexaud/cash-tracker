@@ -51,4 +51,6 @@ O app é um registro manual e simples de salários, estimativas de gastos e rese
 
 ## Entrega
 
+Ao subir um conjunto de alterações (commit/push para publicação), atualize a versão exibida no canto inferior direito do app: rode `npm version patch --no-git-tag-version` (ou `minor` para funcionalidade nova) e inclua `package.json` e `package-lock.json` no mesmo commit. A tela lê esse número de `package.json` via `APP_VERSION`; não o escreva à mão em outro lugar.
+
 Informe o que mudou, por quê, checks executados e limitações materiais. Cite arquivos/linhas quando ajudam a revisar. Em análises, diferencie defeito confirmado, evidência de código e hipótese que exige reprodução. Atualize documentação quando contratos ou comandos mudarem.
