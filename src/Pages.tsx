@@ -844,7 +844,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
                 !data.goals.some((g) => g.accountId === account.id) && (
                   <button
                     className="icon-button muted"
-                    aria-label={`Excluir conta ${protect(account.name)}`}
+                    aria-label={`Excluir local ${protect(account.name)}`}
                     onClick={() => actions.removeAccount(account)}
                   >
                     <Trash2 size={14} />
@@ -894,7 +894,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
                 {movementDateLabel(movement)} ·{" "}
                 {protect(
                   data.accounts.find((a) => a.id === movement.accountId)
-                    ?.name ?? "Conta",
+                    ?.name ?? "Local de reserva",
                 )}
               </span>
             </div>
@@ -1032,7 +1032,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
                 <p>
                   {protect(
                     data.accounts.find((a) => a.id === goal.accountId)?.name ??
-                      "Conta",
+                      "Local de reserva",
                   )}
                 </p>
               </div>

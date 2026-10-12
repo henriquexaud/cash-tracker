@@ -540,12 +540,12 @@ export function MovementForm({
 
   const hint =
     kind === "withdrawal"
-      ? "Digite o valor positivo que saiu da conta."
+      ? "Digite o valor positivo que saiu do local."
       : kind === "return"
-        ? "Rendimento recebido nesta conta. Use um valor negativo para registrar uma perda."
+        ? "Rendimento recebido neste local. Use um valor negativo para registrar uma perda."
         : kind === "opening"
-          ? "Saldo que já existia antes de começar os registros nesta conta. Cadastre antes dos aportes e rendimentos."
-          : "Valor novo que você guardou nesta conta.";
+          ? "Saldo que já existia antes de começar os registros neste local. Cadastre antes dos aportes e rendimentos."
+          : "Valor novo que você guardou neste local.";
 
   return (
     <Modal
@@ -610,7 +610,7 @@ export function MovementForm({
                 onChange={(event) => setAccountId(event.target.value)}
               >
                 {!data.accounts.length && (
-                  <option value="">Nenhuma conta cadastrada</option>
+                  <option value="">Nenhum local cadastrado</option>
                 )}
                 {data.accounts.map((account) => (
                   <option key={account.id} value={account.id}>
@@ -663,7 +663,7 @@ export function MovementForm({
         </div>
         {!data.accounts.length && (
           <p className="form-hint">
-            Cadastre uma conta na tela Reserva antes de registrar movimentações.
+            Cadastre um local na tela Reserva antes de registrar movimentações.
           </p>
         )}
         <FormError error={error} id={`${id}-error`} />
@@ -735,7 +735,7 @@ export function GoalForm({
   return (
     <Modal
       title={goal ? "Editar objetivo" : "Criar objetivo"}
-      description="Destine parte do saldo de uma conta a um objetivo. O dinheiro continua na mesma conta."
+      description="Destine parte do saldo de um local a um objetivo. O dinheiro continua no mesmo local."
       onClose={onClose}
     >
       <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
@@ -757,7 +757,7 @@ export function GoalForm({
               data-autofocus
             />
           </Field>
-          <Field label="Conta do dinheiro reservado" id={`${id}-account`}>
+          <Field label="Local do dinheiro reservado" id={`${id}-account`}>
             <Select
               className="select"
               id={`${id}-account`}
@@ -765,7 +765,7 @@ export function GoalForm({
               onChange={(event) => setAccountId(event.target.value)}
             >
               {!data.accounts.length && (
-                <option value="">Nenhuma conta cadastrada</option>
+                <option value="">Nenhum local cadastrado</option>
               )}
               {data.accounts.map((account) => (
                 <option key={account.id} value={account.id}>
@@ -788,7 +788,7 @@ export function GoalForm({
             enterKeyHint="done"
             value={allocated}
             onChange={setAllocated}
-            hint="Este valor destina dinheiro que já existe na conta e não cria um novo aporte."
+            hint="Este valor destina dinheiro que já existe no local e não cria um novo aporte."
           />
         </div>
         <div className="money-preview">
@@ -797,7 +797,7 @@ export function GoalForm({
         </div>
         {!data.accounts.length && (
           <p className="form-hint">
-            Cadastre uma conta na tela Reserva antes de criar objetivos.
+            Cadastre um local na tela Reserva antes de criar objetivos.
           </p>
         )}
         <FormError error={error} id={`${id}-error`} />
@@ -905,7 +905,7 @@ export function LegacyForm({
   return (
     <Modal
       title="Conferir reserva da planilha"
-      description="Os valores antigos foram preservados. Confirme o saldo atual para começar a acompanhar sua conta."
+      description="Os valores antigos foram preservados. Confirme o saldo atual para começar a acompanhar sua reserva."
       onClose={onClose}
       className="modal-wide"
     >
@@ -967,7 +967,7 @@ export function LegacyForm({
               onChange={(event) => setDate(event.target.value)}
             />
           </Field>
-          <Field label="Conta" id={`${id}-account`}>
+          <Field label="Local de reserva" id={`${id}-account`}>
             <Select
               className="select"
               id={`${id}-account`}
@@ -975,7 +975,7 @@ export function LegacyForm({
               onChange={(event) => setAccountId(event.target.value)}
             >
               {!data.accounts.length && (
-                <option value="">Nenhuma conta cadastrada</option>
+                <option value="">Nenhum local cadastrado</option>
               )}
               {data.accounts.map((account) => (
                 <option key={account.id} value={account.id}>
@@ -992,14 +992,14 @@ export function LegacyForm({
         </p>
         {accountHasMovements && (
           <p className="form-error" role="alert">
-            Esta conta já tem movimentações. O saldo inicial precisa vir antes
+            Este local já tem movimentações. O saldo inicial precisa vir antes
             dos aportes e rendimentos. Copie os lançamentos que deseja manter,
             remova-os e confirme o saldo; depois, registre-os novamente.
           </p>
         )}
         {!data.accounts.length && (
           <p className="form-hint">
-            Cadastre uma conta na tela Reserva antes de confirmar o saldo.
+            Cadastre um local na tela Reserva antes de confirmar o saldo.
           </p>
         )}
         <FormError error={error} id={`${id}-error`} />

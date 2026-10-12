@@ -72,7 +72,7 @@ export function splitMessage({ op, entry, groupName, members, actor, recipient }
 }
 
 export function reminderMessage(month: string): PushMessage {
-  const label = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" })
+  const label = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
     .format(new Date(`${month}-01T00:00:00Z`));
   return {
     title: "Cash Tracker",

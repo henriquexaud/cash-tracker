@@ -246,7 +246,7 @@ describe("textos enviados pelo servidor", () => {
 
   it("nomeia o mês do lembrete", () => {
     expect(reminderMessage("2026-10")).toEqual({
-      title: "Cash Tracker", body: "Hora de lançar o salário e montar o orçamento de outubro.",
+      title: "Cash Tracker", body: "Hora de lançar o salário e montar o orçamento de outubro de 2026.",
       tag: "cash-tracker-reminder-2026-10", url: "#dashboard",
     });
   });

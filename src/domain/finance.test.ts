@@ -410,7 +410,7 @@ describe("wealth and chronology", () => {
         data,
         entry({ id: "bad-account", accountId: "missing" }),
       ),
-    ).toContain("conta existente");
+    ).toContain("local existente");
     expect(
       validateMovement(data, entry({ id: "decimal", amount: 100.01 })),
     ).toContain("valor monetário");

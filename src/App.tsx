@@ -556,7 +556,7 @@ export default function App({
                   }
                 : current.legacy,
             };
-          }, "Movimentação registrada.")
+          }, movement ? "Movimentação atualizada." : "Movimentação registrada.")
         }
       />,
     );
@@ -782,7 +782,7 @@ export default function App({
                 ...current,
                 goals: [...current.goals.filter((row) => row.id !== g.id), g],
               };
-            }, "Objetivo atualizado.")
+            }, goal ? "Objetivo atualizado." : "Objetivo criado.")
           }
         />,
       ),
@@ -860,15 +860,17 @@ export default function App({
             void withSaving(async () => {
               if (push) await removePush(push);
               await account.signOut();
-            }).catch((error) =>
+            }).catch((error) => {
+              // Still signed in: restore the subscription removed before the attempt.
+              if (push) void syncPush(push, readPrefs(), doneMonth);
               setNotice({
                 text:
                   error instanceof Error
                     ? error.message
                     : "Não foi possível sair.",
                 error: true,
-              }),
-            ),
+              });
+            }),
           "Sair",
           false,
         );

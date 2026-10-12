@@ -313,7 +313,7 @@ export function validateMovement(
   excludeId?: string,
 ): string | null {
   if (!data.accounts.some((account) => account.id === movement.accountId))
-    return "Selecione uma conta existente.";
+    return "Selecione um local existente.";
   if (!validDate(movement.date)) return "Informe uma data válida.";
   if (movement.datePrecision !== undefined &&
       (movement.datePrecision !== "month" || !movement.date.endsWith("-01")))
@@ -350,7 +350,7 @@ export function validateMovement(
         entry.id !== excludeId && entry.accountId === movement.accountId,
     )
   ) {
-    return "Registre o saldo inicial antes das outras movimentações dessa conta. Um saldo atual pode incluir dinheiro já registrado.";
+    return "Registre o saldo inicial antes das outras movimentações desse local. Um saldo atual pode incluir dinheiro já registrado.";
   }
   const affectedAccounts = new Set([
     movement.accountId,
@@ -365,7 +365,7 @@ export function validateMovement(
         (entry) => entry.kind === "opening",
       );
       if (openings.length > 1)
-        return "Cada conta pode ter apenas um saldo inicial. Edite o saldo inicial existente.";
+        return "Cada local pode ter apenas um saldo inicial. Edite o saldo inicial existente.";
       const invalidOpeningDate =
         openings[0] &&
         accountMovements.some(
@@ -383,10 +383,10 @@ export function validateMovement(
       for (const date of [...byDate.keys()].sort()) {
         balance = safeSum([balance, ...byDate.get(date)!]);
         if (balance < 0)
-          return "Esse registro deixaria a conta com saldo negativo. Confira o valor e a data.";
+          return "Esse registro deixaria o local com saldo negativo. Confira o valor e a data.";
       }
       if (invalidOpeningDate)
-        return "A data do saldo inicial deve ser anterior ou igual à primeira movimentação dessa conta.";
+        return "A data do saldo inicial deve ser anterior ou igual à primeira movimentação desse local.";
       const allocated = safeSum(
         data.goals
           .filter((goal) => goal.accountId === accountId)
@@ -408,7 +408,7 @@ export function validateGoal(
 ): string | null {
   if (!goal.name.trim()) return "Dê um nome ao objetivo.";
   if (!data.accounts.some((account) => account.id === goal.accountId))
-    return "Selecione uma conta existente.";
+    return "Selecione um local existente.";
   if (!Number.isSafeInteger(goal.target) || goal.target <= 0)
     return "Informe um valor positivo para a meta.";
   if (!Number.isSafeInteger(goal.allocated) || goal.allocated < 0)
@@ -428,7 +428,7 @@ export function validateGoal(
       goal.allocated,
     ]);
     if (allocated > accountBalance(data, goal.accountId))
-      return "O valor destinado aos objetivos ultrapassa o saldo dessa conta.";
+      return "O valor destinado aos objetivos ultrapassa o saldo desse local.";
   } catch {
     return "O valor ultrapassa o limite monetário permitido.";
   }

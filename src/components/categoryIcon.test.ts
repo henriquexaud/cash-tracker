@@ -14,6 +14,7 @@ import {
   Landmark,
   Laptop,
   Pill,
+  Plane,
   Play,
   Receipt,
   Scissors,
@@ -63,6 +64,10 @@ describe("categoryIcon", () => {
     expect(categoryIcon("Financiamento")).toBe(Landmark);
     expect(categoryIcon("Gasolina")).toBe(Fuel);
     expect(categoryIcon("Transporte")).toBe(Bus);
+    expect(categoryIcon("Passagem aérea")).toBe(Plane);
+    expect(categoryIcon("Passagem de ônibus")).toBe(Bus);
+    expect(categoryIcon("Flores")).not.toBe(House);
+    expect(categoryIcon("Florianópolis")).toBe(House);
   });
 
   it("usa o ícone padrão indicado quando nada casa", () => {
