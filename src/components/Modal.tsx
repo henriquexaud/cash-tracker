@@ -100,8 +100,13 @@ export function Modal({
     };
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("focusin", handleFocus);
+    // Where the platform offers it, the system back button or gesture closes the
+    // dialog instead of leaving the screen behind it. Escape stays with the handler above.
+    const watcher = typeof CloseWatcher === "undefined" ? null : new CloseWatcher();
+    if (watcher) watcher.onclose = () => closeRef.current();
 
     return () => {
+      watcher?.destroy();
       cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("focusin", handleFocus);

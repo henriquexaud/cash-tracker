@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "../App";
 import { PrivacyContext, privacySettings } from "../privacy";
 import type { DataRepository } from "../repository";
@@ -274,6 +274,31 @@ describe("Divisões", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copiar link" }));
     await screen.findByText("Link do convite copiado.");
     expect(writeText).toHaveBeenCalledWith(`${location.origin}/#splits/join/ABCDEF123456`);
+  });
+
+  it("reabre a aba com a última lista da sessão enquanto relê, sem a tela de carregamento", async () => {
+    seed(trio());
+    const local = createLocalSplitRepository(() => storage);
+    let release = () => {};
+    const load = vi.fn(local.load);
+    setup({ splits: { ...local, load } });
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    fireEvent.click(screen.getByRole("link", { name: "Divisões" }));
+    await screen.findByRole("link", { name: /Viagem/ });
+
+    fireEvent.click(screen.getByRole("link", { name: "Visão geral" }));
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    load.mockImplementationOnce(() => new Promise((resolve) => {
+      release = () => resolve([{ ...trio(), name: "Viagem de julho" }]);
+    }));
+    fireEvent.click(screen.getByRole("link", { name: "Divisões" }));
+    await screen.findByRole("heading", { name: "Divisões", level: 1 });
+    expect(screen.getByRole("link", { name: /Viagem/ })).toBeTruthy();
+    expect(screen.queryByText("Abrindo suas divisões…")).toBeNull();
+    // The reading in progress still replaces what was shown.
+    await act(async () => release());
+    expect(await screen.findByRole("link", { name: /Viagem de julho/ })).toBeTruthy();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it("não mostra um grupo do qual a conta não participa", async () => {

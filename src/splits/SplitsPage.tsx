@@ -22,6 +22,8 @@ import { ExpenseForm, NamesForm, SettleForm, capitalized, debtText, memberName }
 import type { SplitEntry, SplitGroup } from "./types";
 
 const NAME_KEY = "cash-tracker-split-name";
+// Kept in memory for the session: returning to the tab shows the last list while it is read again.
+const lastGroups = new WeakMap<SplitRepository, SplitGroup[]>();
 // Expenses reuse the budget icons, chosen by description; settlements keep their own.
 function EntryIcon({ entry }: { entry: SplitEntry }) {
   const Icon = entry.kind === "settlement" ? HandCoins : categoryIcon(entry.description, Receipt);
@@ -74,7 +76,7 @@ export function SplitsPage({
   notify: (text: string, error?: boolean) => void;
 }) {
   const { money } = usePrivacy();
-  const [groups, setGroups] = useState<SplitGroup[] | null>(null);
+  const [groups, setGroups] = useState<SplitGroup[] | null>(() => lastGroups.get(repository) ?? null);
   const [loadError, setLoadError] = useState("");
   const [route, setRoute] = useState(readRoute);
   const [modal, setModal] = useState<ReactNode>(null);
@@ -86,6 +88,7 @@ export function SplitsPage({
   const refresh = async () => {
     try {
       const next = await repository.load();
+      lastGroups.set(repository, next);
       if (!live.current) return;
       setGroups(next);
       setLoadError("");

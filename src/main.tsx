@@ -1,6 +1,8 @@
 import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
+import { LoaderCircle } from "lucide-react";
 import App from "./App";
+import { BrandMark } from "./components/BrandMark";
 const AuthGate = lazy(() =>
   import("./auth/AuthGate").then((module) => ({ default: module.AuthGate })),
 );
@@ -16,7 +18,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <PrivacyProvider>
       {CLOUD_MODE ? (
         <Suspense
-          fallback={<div className="loading-screen">Abrindo sua conta…</div>}
+          fallback={
+            // Same layout as the account and data steps that follow: nothing shifts while opening.
+            <div className="loading-screen">
+              <BrandMark />
+              <h1>Cash Tracker</h1>
+              <LoaderCircle className="spin" />
+              <p>Abrindo sua conta…</p>
+            </div>
+          }
         >
           <AuthGate />
         </Suspense>

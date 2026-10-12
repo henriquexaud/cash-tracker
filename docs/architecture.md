@@ -63,6 +63,7 @@ Divisões é um módulo paralelo às cinco telas financeiras. O `App` apenas adi
 - O resumo do grupo mostra o gasto total, a parte de quem está usando e o saldo; cada despesa indica quanto essa pessoa recebe ou deve por ela (`entryImpact`, cuja soma é o saldo). Totais de gasto ignoram acertos (`spending`). Com mais de um grupo, a lista soma os saldos.
 - Qualquer participante pode editar ou excluir lançamentos do grupo. Não há remoção de participante nem exclusão de grupo.
 - Modo cloud: `split_groups`, `split_members` e `split_entries` ficam no Supabase, que é a única fonte dos dados compartilhados. A leitura é limitada por RLS a quem participa; toda gravação passa por funções `security definer` que identificam a conta por `auth.uid()` e validam que pagador e participantes pertencem ao grupo. O convite é um código aleatório de 12 caracteres; quem o possui entra no grupo. Cada participante escolhe o nome exibido; e-mails não são compartilhados. **Não há cópia offline nem fila de envio:** sem internet a tela informa a falha e as demais continuam funcionando.
+- A última lista lida fica apenas na memória da sessão, por repositório: ao voltar à aba ela aparece de imediato enquanto a leitura é refeita, e a resposta nova a substitui. Não é gravada no dispositivo nem sobrevive a recarregar ou sair da conta.
 - Modo local: os grupos ficam em `localStorage` (`cash-tracker-splits`), separados do IndexedDB financeiro; como não há contas, participantes são adicionados pelo nome. Conteúdo ilegível gera erro e não é sobrescrito.
 - Com o olho fechado, a tela oculta os valores e mantém nomes de grupos/pessoas e descrições.
 
@@ -75,6 +76,14 @@ O `Modal` é um portal com foco inicial, contenção do foco, retorno ao dispara
 O contexto compartilhado `SavingContext` chega também aos portais e modais guardados em estado. Campos, salvar/confirmar e fechar ficam bloqueados durante o commit; o botão indica a ação em andamento. A validação associa o erro ao campo com `aria-invalid`/`aria-describedby`, preserva a dica e limpa a mensagem ao editar o campo responsável. Erros gerais são limpos na próxima edição.
 
 Um clique fora não descarta campos editados. Cancelar, X e Escape mantêm o fechamento explícito, sem confirmação extra. Mensagens operacionais seguras continuam legíveis com o olho fechado; caminhos de erro do backup não interpolam IDs fornecidos pelo arquivo.
+
+Onde o navegador oferece `CloseWatcher` (Chrome, inclusive instalado no Android), o botão ou gesto de voltar do sistema fecha o diálogo como o Escape, sem trocar de tela e respeitando o bloqueio durante a gravação. Sem essa API (Safari/iOS), voltar continua navegando pelo histórico. O diálogo não cria entradas no histórico.
+
+Em um campo com `enterKeyHint="next"`, Enter (a tecla "Seguinte" do teclado virtual) leva ao próximo campo obrigatório ainda vazio, ignorando seções opcionais recolhidas. Sem campo pendente, envia o formulário como antes.
+
+## Toque e movimento
+
+Até 760 px o diálogo é apresentado como folha inferior, com a mesma estrutura, foco e controles; acima disso continua centralizado. Estilos de `:hover` ficam em `@media (hover: hover)`, para não permanecerem após um toque; o retorno ao toque vem do estado `:active`. O que uma tela insere entra com uma transição curta, e `prefers-reduced-motion` desativa todas. No celular, campos e filtros usam 16 px para o iOS não ampliar a página ao focar. Tocar na aba já aberta volta ao topo. As telas de abertura (pacote, conta e registros) têm a mesma composição, de modo que a marca não muda de lugar entre as etapas.
 
 ## Notificações
 

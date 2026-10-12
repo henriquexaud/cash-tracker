@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import App from "./App";
 import { BudgetPage, SettingsPage } from "./Pages";
 import { InstallGuide } from "./components/InstallGuide";
+import { SavingContext } from "./components/Saving";
 import { BudgetItemForm, GoalForm, LegacyForm, MovementForm, ReservePlanForm, SalaryForm } from "./components/EntryForms";
 import { createEmptyData } from "./domain/empty";
 import { currentMonth, shiftMonth } from "./domain/finance";
@@ -386,5 +387,60 @@ describe("entrada de valores", () => {
     expect(screen.getByText(/75,00/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Salvar gasto" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ unitAmount: 250, factor: 30 }));
+  });
+
+  it("leva ao campo obrigatório vazio com a tecla Seguinte, sem acusar erro, e deixa o Enter salvar quando nada falta", () => {
+    render(<BudgetItemForm onSave={vi.fn()} onClose={vi.fn()} />);
+    const name = screen.getByLabelText("Nome do gasto");
+    const amount = screen.getByLabelText("Valor mensal (R$)");
+    fireEvent.change(name, { target: { value: "Transporte" } });
+    // fireEvent returns false when the default action (submitting the form) was prevented.
+    expect(fireEvent.keyDown(name, { key: "Enter" })).toBe(false);
+    expect(document.activeElement).toBe(amount);
+    expect(screen.queryByRole("alert")).toBeNull();
+    // The collapsed "Repetições no mês" is optional and never takes the focus.
+    fireEvent.change(screen.getByLabelText("Quantidade"), { target: { value: "" } });
+    fireEvent.change(amount, { target: { value: "2,50" } });
+    expect(fireEvent.keyDown(name, { key: "Enter" })).toBe(true);
+    expect(fireEvent.keyDown(amount, { key: "Enter" })).toBe(true);
+    expect(fireEvent.keyDown(name, { key: "a" })).toBe(true);
+  });
+});
+
+describe("gestos do sistema", () => {
+  it("fecha o diálogo com o voltar do sistema onde a plataforma oferece, respeitando a gravação em andamento", () => {
+    const watchers: { onclose: (() => void) | null; destroy: ReturnType<typeof vi.fn> }[] = [];
+    vi.stubGlobal("CloseWatcher", class {
+      onclose: (() => void) | null = null;
+      destroy = vi.fn();
+      constructor() { watchers.push(this); }
+    });
+    const onClose = vi.fn();
+    const form = (saving: boolean) => (
+      <SavingContext.Provider value={saving}>
+        <SalaryForm month={currentMonth()} onSave={vi.fn()} onClose={onClose} />
+      </SavingContext.Provider>
+    );
+    const view = render(form(true));
+    expect(watchers).toHaveLength(1);
+    watchers[0].onclose?.();
+    expect(onClose).not.toHaveBeenCalled();
+    view.rerender(form(false));
+    watchers[0].onclose?.();
+    expect(onClose).toHaveBeenCalledOnce();
+    view.unmount();
+    expect(watchers).toHaveLength(1);
+    expect(watchers[0].destroy).toHaveBeenCalledOnce();
+  });
+
+  it("volta ao topo ao tocar de novo na aba aberta, sem trocar de tela", async () => {
+    setup(createEmptyData());
+    await screen.findByRole("heading", { name: "Visão geral", level: 1 });
+    const scroll = vi.mocked(window.scrollTo);
+    scroll.mockClear();
+    fireEvent.click(screen.getByRole("link", { name: "Visão geral" }));
+    expect(scroll).toHaveBeenCalledWith({ top: 0 });
+    expect(location.hash).toBe("#dashboard");
+    expect(screen.getByRole("heading", { name: "Visão geral", level: 1 })).toBeTruthy();
   });
 });

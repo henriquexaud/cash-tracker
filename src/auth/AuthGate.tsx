@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { LoaderCircle } from "lucide-react";
 import { BrandMark } from "../components/BrandMark";
 import App from "../App";
 import { createAuthClient, readCloudConfig } from "./client";
@@ -195,6 +196,7 @@ export function AuthGate() {
       <main className="loading-screen">
         <BrandMark />
         <h1>Cash Tracker</h1>
+        {client && <LoaderCircle className="spin" />}
         <p role={!client ? "alert" : "status"}>
           {clientResult.error || "Abrindo sua conta…"}
         </p>

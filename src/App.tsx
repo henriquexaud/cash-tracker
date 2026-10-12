@@ -968,6 +968,10 @@ export default function App({
               href={`#${id}`}
               className={`nav-link ${page === id ? "active" : ""}`}
               aria-current={page === id ? "page" : undefined}
+              onClick={() => {
+                // Tapping the tab already open returns to the top, as in a native tab bar.
+                if (location.hash === `#${id}`) window.scrollTo({ top: 0 });
+              }}
             >
               <Icon size={19} strokeWidth={1.8} />
               <span>{label}</span>

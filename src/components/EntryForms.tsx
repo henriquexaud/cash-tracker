@@ -1,7 +1,7 @@
 import { Select } from "./Select";
 import {
   cloneElement, createContext, isValidElement, useContext, useId, useState,
-  type FormEvent, type ReactElement, type ReactNode,
+  type FormEvent, type KeyboardEvent, type ReactElement, type ReactNode,
 } from "react";
 import {
   formatMoney,
@@ -70,9 +70,21 @@ export function EntryForm({ children, id, error, clearError, onSubmit }: {
   onSubmit: (event: FormEvent) => void;
 }) {
   const saving = useSaving();
+  // "Next" on the keyboard moves to the required field still empty; without one, Enter saves as usual.
+  const advance = (event: KeyboardEvent<HTMLFormElement>) => {
+    const field = event.target as HTMLElement;
+    if (event.key !== "Enter" || field.getAttribute("enterkeyhint") !== "next") return;
+    const required = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement>("input[required]"));
+    const next = required
+      .slice(required.indexOf(field as HTMLInputElement) + 1)
+      .find((input) => !input.value.trim() && !input.closest("details:not([open])"));
+    if (!next) return;
+    event.preventDefault();
+    next.focus();
+  };
   return (
     <ValidationContext.Provider value={{ error, errorId: `${id}-error` }}>
-      <form onSubmit={onSubmit} noValidate onChange={event => clearError((event.target as HTMLElement).id)}>
+      <form onSubmit={onSubmit} noValidate onKeyDown={advance} onChange={event => clearError((event.target as HTMLElement).id)}>
         <fieldset className="form-fields" disabled={saving}>{children}</fieldset>
       </form>
     </ValidationContext.Provider>
