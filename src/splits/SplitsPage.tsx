@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -11,20 +11,29 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { formatMoney } from "../domain/finance";
+import { formatMoney, monthLabel } from "../domain/finance";
+import { categoryIcon } from "../components/categoryIcon";
 import { Modal } from "../components/Modal";
 import { DialogActions, SavingContext } from "../components/Saving";
 import { usePrivacy } from "../privacy";
-import { balances, debts, normalizeInviteCode, timeline } from "./domain";
+import { balances, debts, entryImpact, normalizeInviteCode, spending, timeline } from "./domain";
 import type { SplitRepository } from "./repository";
 import { ExpenseForm, NamesForm, SettleForm, capitalized, debtText, memberName } from "./SplitForms";
 import type { SplitEntry, SplitGroup } from "./types";
 
 const NAME_KEY = "cash-tracker-split-name";
+// Expenses reuse the budget icons, chosen by description; settlements keep their own.
+function EntryIcon({ entry }: { entry: SplitEntry }) {
+  const Icon = entry.kind === "settlement" ? HandCoins : categoryIcon(entry.description, Receipt);
+  return <Icon size={18} aria-hidden="true" />;
+}
 const dateLabel = (date: string) =>
   new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(
     new Date(`${date}T12:00:00`),
   );
+const plain = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+/** The history only offers a search once it no longer fits at a glance. */
+const SEARCH_FROM = 6;
 const list = (names: string[]) =>
   names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
 // The current user is listed last, as "você".
@@ -69,6 +78,7 @@ export function SplitsPage({
   const [loadError, setLoadError] = useState("");
   const [route, setRoute] = useState(readRoute);
   const [modal, setModal] = useState<ReactNode>(null);
+  const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const live = useRef(true);
@@ -89,6 +99,7 @@ export function SplitsPage({
     void refresh();
     const onHash = () => {
       setRoute(readRoute());
+      setSearch("");
       if (!savingRef.current) setModal(null);
     };
     const onFocus = () => {
@@ -213,58 +224,64 @@ export function SplitsPage({
     return group ? groupView(group) : listView(groups);
   };
 
-  const listView = (rows: SplitGroup[]) => (
-    <section className="panel">
-      <div className="panel-heading split-heading">
-        <div>
-          <h2>Seus grupos</h2>
-          <span className="subtle">Nada daqui entra no seu orçamento ou na sua reserva.</span>
-        </div>
-        <div className="settings-actions">
-          {repository.joinGroup && (
-            <button className="button secondary" onClick={() => joinGroup()}>
-              Entrar com código
+  const position = (value: number, you = "Você") =>
+    value > 0 ? `${you} recebe ${money(value)}` : value < 0 ? `${you} deve ${money(-value)}` : "Tudo acertado";
+  const tone = (value: number) => (value > 0 ? "positive" : value < 0 ? "negative" : "");
+
+  const listView = (rows: SplitGroup[]) => {
+    const overall = rows.reduce((sum, row) => sum + (balances(row).get(row.me) ?? 0), 0);
+    return (
+      <section className="panel">
+        <div className="panel-heading split-heading">
+          <div>
+            <h2>Seus grupos</h2>
+            <span className="subtle">Nada daqui entra no seu orçamento ou na sua reserva.</span>
+          </div>
+          <div className="settings-actions">
+            {repository.joinGroup && (
+              <button className="button secondary" onClick={() => joinGroup()}>
+                Entrar com código
+              </button>
+            )}
+            <button className="button primary" onClick={createGroup}>
+              <Plus size={17} /> Criar grupo
             </button>
-          )}
-          <button className="button primary" onClick={createGroup}>
-            <Plus size={17} /> Criar grupo
-          </button>
+          </div>
         </div>
-      </div>
-      {rows.map((row) => {
-        const mine = balances(row).get(row.me) ?? 0;
-        return (
-          <a className="split-group-row" key={row.id} href={`#splits/${row.id}`}>
-            <span className="account-icon">
-              <Users size={20} aria-hidden="true" />
-            </span>
-            <div>
-              <strong>{row.name}</strong>
-              <span>{row.members.length > 1 ? capitalized(membersText(row)) : "Só você por enquanto"}</span>
-            </div>
-            <span className={`split-balance ${mine > 0 ? "positive" : mine < 0 ? "negative" : ""}`}>
-              {mine > 0
-                ? `Você recebe ${money(mine)}`
-                : mine < 0
-                  ? `Você deve ${money(-mine)}`
-                  : "Tudo acertado"}
-            </span>
-            <ChevronRight size={16} aria-hidden="true" />
-          </a>
-        );
-      })}
-      {!rows.length && (
-        <div className="empty-state">
-          <Users size={27} aria-hidden="true" />
-          <h3>Divida despesas com outras pessoas</h3>
-          <p>
-            Crie um grupo, registre quem pagou e veja quem deve a quem.
-            {repository.joinGroup && " Se alguém te convidou, entre com o código."}
+        {rows.length > 1 && (
+          <p className="split-clear">
+            Somando os grupos: <strong className={`split-balance ${tone(overall)}`}>{overall ? position(overall, "você") : "tudo acertado"}</strong>
           </p>
-        </div>
-      )}
-    </section>
-  );
+        )}
+        {rows.map((row) => {
+          const mine = balances(row).get(row.me) ?? 0;
+          return (
+            <a className="split-group-row" key={row.id} href={`#splits/${row.id}`}>
+              <span className="account-icon">
+                <Users size={20} aria-hidden="true" />
+              </span>
+              <div>
+                <strong>{row.name}</strong>
+                <span>{row.members.length > 1 ? capitalized(membersText(row)) : "Só você por enquanto"}</span>
+              </div>
+              <span className={`split-balance ${tone(mine)}`}>{position(mine)}</span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </a>
+          );
+        })}
+        {!rows.length && (
+          <div className="empty-state">
+            <Users size={27} aria-hidden="true" />
+            <h3>Divida despesas com outras pessoas</h3>
+            <p>
+              Crie um grupo, registre quem pagou e veja quem deve a quem.
+              {repository.joinGroup && " Se alguém te convidou, entre com o código."}
+            </p>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const invitePeople = (current: SplitGroup) => {
     if (repository.addMember)
@@ -331,10 +348,83 @@ export function SplitsPage({
               : `dividido entre ${membersText(current, entry.participants)}`
         }`;
 
+  const entryRow = (current: SplitGroup, entry: SplitEntry) => {
+    const impact = entryImpact(entry, current.me);
+    const save = (next: SplitEntry, message: string) =>
+      void run(() => repository.saveEntry(current.id, next), message);
+    return (
+      <div className="movement-row" key={entry.id}>
+        <span className="movement-icon">
+          <EntryIcon entry={entry} />
+        </span>
+        <div className="movement-main">
+          <strong>{entryTitle(current, entry)}</strong>
+          <span>
+            {dateLabel(entry.date)} · {entryDetail(current, entry)}
+          </span>
+        </div>
+        <div className="split-entry-value">
+          <strong>{money(entry.amount)}</strong>
+          {entry.kind === "expense" && (
+            <span className={tone(impact)}>
+              {impact ? position(impact, "você") : "não envolve você"}
+            </span>
+          )}
+        </div>
+        <div className="row-actions">
+          {entry.kind === "expense" && (
+            <button
+              className="icon-button"
+              aria-label={`Editar ${entry.description}`}
+              onClick={() =>
+                setModal(
+                  <ExpenseForm group={current} entry={entry} onClose={close} onSave={(next) => save(next, "Despesa atualizada.")} />,
+                )
+              }
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+          <button
+            className="icon-button muted"
+            aria-label={`Excluir ${entry.kind === "settlement" ? `acerto: ${entryTitle(current, entry)}` : entry.description}`}
+            onClick={() =>
+              setModal(
+                <Modal title={entry.kind === "settlement" ? "Excluir acerto?" : "Excluir despesa?"} onClose={close}>
+                  <p className="modal-description">
+                    {entryTitle(current, entry)}, {formatMoney(entry.amount)}, será removido para todos do grupo. Os saldos serão recalculados.
+                  </p>
+                  <DialogActions
+                    onClose={close}
+                    label="Excluir"
+                    destructive
+                    onConfirm={() =>
+                      void run(
+                        () => repository.removeEntry(current.id, entry.id),
+                        entry.kind === "settlement" ? "Acerto excluído." : "Despesa excluída.",
+                      )
+                    }
+                  />
+                </Modal>,
+              )
+            }
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const groupView = (current: SplitGroup) => {
     const owed = debts(current);
     const entries = timeline(current);
     const alone = current.members.length < 2;
+    const total = spending(current.entries, current.me);
+    const mine = balances(current).get(current.me) ?? 0;
+    const query = entries.length >= SEARCH_FROM ? plain(search.trim()) : "";
+    const shown = query ? entries.filter((entry) => plain(entryTitle(current, entry)).includes(query)) : entries;
+    const months = [...new Set(shown.map((entry) => entry.date.slice(0, 7)))];
     const save = (entry: SplitEntry, message: string) =>
       void run(() => repository.saveEntry(current.id, entry), message);
     return (
@@ -363,6 +453,22 @@ export function SplitsPage({
               </button>
             </div>
           </div>
+          {total.spent > 0 && (
+            <dl className="split-totals">
+              <div>
+                <dt>Gasto do grupo</dt>
+                <dd>{money(total.spent)}</dd>
+              </div>
+              <div>
+                <dt>Sua parte</dt>
+                <dd>{money(total.share)}</dd>
+              </div>
+              <div>
+                <dt>Seu saldo</dt>
+                <dd className={tone(mine)}>{position(mine)}</dd>
+              </div>
+            </dl>
+          )}
           {alone ? (
             <p className="split-clear">
               {repository.addMember
@@ -401,61 +507,33 @@ export function SplitsPage({
               <span className="subtle">Despesas e acertos, dos mais recentes aos mais antigos</span>
             </div>
           </div>
-          {entries.map((entry) => (
-            <div className="movement-row" key={entry.id}>
-              <span className="movement-icon">
-                {entry.kind === "settlement" ? <HandCoins size={18} aria-hidden="true" /> : <Receipt size={18} aria-hidden="true" />}
-              </span>
-              <div className="movement-main">
-                <strong>{entryTitle(current, entry)}</strong>
-                <span>
-                  {dateLabel(entry.date)} · {entryDetail(current, entry)}
-                </span>
-              </div>
-              <strong>{money(entry.amount)}</strong>
-              <div className="row-actions">
-                {entry.kind === "expense" && (
-                  <button
-                    className="icon-button"
-                    aria-label={`Editar ${entry.description}`}
-                    onClick={() =>
-                      setModal(
-                        <ExpenseForm group={current} entry={entry} onClose={close} onSave={(next) => save(next, "Despesa atualizada.")} />,
-                      )
-                    }
-                  >
-                    <Pencil size={15} />
-                  </button>
-                )}
-                <button
-                  className="icon-button muted"
-                  aria-label={`Excluir ${entry.kind === "settlement" ? `acerto: ${entryTitle(current, entry)}` : entry.description}`}
-                  onClick={() =>
-                    setModal(
-                      <Modal title={entry.kind === "settlement" ? "Excluir acerto?" : "Excluir despesa?"} onClose={close}>
-                        <p className="modal-description">
-                          {entryTitle(current, entry)}, {formatMoney(entry.amount)}, será removido para todos do grupo. Os saldos serão recalculados.
-                        </p>
-                        <DialogActions
-                          onClose={close}
-                          label="Excluir"
-                          destructive
-                          onConfirm={() =>
-                            void run(
-                              () => repository.removeEntry(current.id, entry.id),
-                              entry.kind === "settlement" ? "Acerto excluído." : "Despesa excluída.",
-                            )
-                          }
-                        />
-                      </Modal>,
-                    )
-                  }
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </div>
-          ))}
+          {entries.length >= SEARCH_FROM && (
+            <input
+              className="input split-search"
+              type="search"
+              aria-label="Buscar no histórico"
+              placeholder="Buscar pela descrição"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          )}
+          {months.map((month) => {
+            const rows = shown.filter((entry) => entry.date.startsWith(month));
+            return (
+              <Fragment key={month}>
+                <h3 className="split-month">
+                  <span>{capitalized(monthLabel(month))}</span>
+                  <span>{money(spending(rows, current.me).spent)}</span>
+                </h3>
+                {rows.map((entry) => entryRow(current, entry))}
+              </Fragment>
+            );
+          })}
+          {!!entries.length && !shown.length && (
+            <p className="split-clear" role="status">
+              Nenhum lançamento com “{search.trim()}”.
+            </p>
+          )}
           {!entries.length && (
             <div className="empty-state">
               <Receipt size={27} aria-hidden="true" />

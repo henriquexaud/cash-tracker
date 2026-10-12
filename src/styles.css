@@ -287,9 +287,14 @@ textarea {
   gap: var(--topbar-control-spacing);
   margin-left: auto;
 }
-.topbar-actions .privacy-toggle {
+.topbar-actions .icon-button {
   width: 44px;
   height: 44px;
+  flex-shrink: 0;
+}
+.topbar-actions .icon-button[aria-current="page"] {
+  color: var(--green);
+  background: var(--green-light);
 }
 .main-content {
   max-width: 1260px;
@@ -2633,6 +2638,59 @@ textarea.input {
 .page-splits .movement-main strong {
   overflow-wrap: anywhere;
 }
+.split-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 14px 24px;
+  margin: 18px 0 0;
+}
+.split-totals dt {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.split-totals dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.split-search {
+  margin-top: 16px;
+}
+.split-month {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.split-entry-value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.split-entry-value strong {
+  font-size: 14px;
+  font-weight: 550;
+}
+.split-entry-value span {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.split-entry-value span.positive {
+  color: var(--positive);
+}
+.split-entry-value span.negative {
+  color: var(--negative);
+}
 @media (max-width: 370px) {
   /* On the narrowest phones a two-word label stacks to leave room between tabs. */
   .nav-link span {
@@ -2640,7 +2698,7 @@ textarea.input {
   }
 }
 @media (max-width: 760px) {
-  /* Six destinations: each tab takes the width of its label instead of an equal column. */
+  /* Five destinations: each tab takes the width of its label instead of an equal column. */
   .nav-link {
     flex: 1 1 auto;
     min-width: 0;
@@ -2655,6 +2713,11 @@ textarea.input {
     flex-basis: 100%;
     order: 3;
     margin-left: 44px;
+    text-align: left;
+  }
+  .split-entry-value {
+    flex: 1;
+    margin-left: 42px;
     text-align: left;
   }
 }

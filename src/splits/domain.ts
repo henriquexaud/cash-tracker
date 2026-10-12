@@ -39,6 +39,24 @@ export function balances(group: SplitGroup): Map<string, number> {
   return result;
 }
 
+/** What one entry does to a member's position: positive is owed to them, negative they owe. */
+export function entryImpact(entry: SplitEntry, member: string): number {
+  return (entry.paidBy === member ? entry.amount : 0) - (entryShares(entry).get(member) ?? 0);
+}
+
+/** Expenses only, settlements move no cost: what was spent and how much of it is the member's share. */
+export function spending(entries: SplitEntry[], member: string): { spent: number; share: number } {
+  let spent = 0;
+  let share = 0;
+  for (const entry of entries) {
+    if (entry.kind !== "expense") continue;
+    spent += entry.amount;
+    share += entryShares(entry).get(member) ?? 0;
+    if (!Number.isSafeInteger(spent)) throw new Error("Valor monetário fora do limite seguro.");
+  }
+  return { spent, share };
+}
+
 /** Offsets debts inside the group, leaving at most one payment per debtor/creditor pair. */
 export function debts(group: SplitGroup): SplitDebt[] {
   const open = [...balances(group)]

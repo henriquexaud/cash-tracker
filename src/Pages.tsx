@@ -3,17 +3,11 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
-  Building2,
   CalendarDays,
   ChevronRight,
-  Cloud,
   Copy,
   Download,
-  Dumbbell,
-  HeartPulse,
-  House,
   Info,
-  Laptop,
   Plus,
   Palette,
   ShieldCheck,
@@ -22,15 +16,11 @@ import {
   Target,
   Trash2,
   TrendingUp,
-  Utensils,
   Wallet,
-  Wifi,
-  Zap,
   Pencil,
-  Car,
-  Play,
   Landmark,
 } from "lucide-react";
+import { categoryIcon } from "./components/categoryIcon";
 import {
   accountBalance,
   budgetTotal,
@@ -73,32 +63,7 @@ const movementDateLabel = (movement: Movement) =>
     ? monthLabel(movement.date.slice(0, 7))
     : dateLabel(movement.date);
 function CategoryIcon({ name }: { name: string }) {
-  const normalized = name.toLowerCase();
-  const Icon = normalized.includes("alimenta")
-    ? Utensils
-    : normalized.includes("saúde")
-      ? HeartPulse
-      : normalized.includes("mercado")
-        ? ShoppingBasket
-        : normalized.includes("uber")
-          ? Car
-          : normalized.includes("condom")
-            ? Building2
-            : normalized.includes("academia")
-              ? Dumbbell
-              : normalized.includes("luz")
-                ? Zap
-                : normalized.includes("celular")
-                  ? Smartphone
-                  : normalized.includes("internet")
-                    ? Wifi
-                    : normalized.includes("icloud")
-                      ? Cloud
-                      : normalized.includes("youtube")
-                        ? Play
-                        : normalized.includes("chatgpt")
-                          ? Laptop
-                          : House;
+  const Icon = categoryIcon(name);
   return <Icon size={18} strokeWidth={1.7} />;
 }
 function BudgetRow({

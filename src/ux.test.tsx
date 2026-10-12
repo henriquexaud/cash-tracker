@@ -156,7 +156,7 @@ describe("ordenação dos gastos", () => {
 });
 
 describe("cabeçalho e configurações", () => {
-  it("mostra apenas os controles de valores e tema, nessa ordem", async () => {
+  it("mostra os controles de valores, tema e configurações, nessa ordem", async () => {
     setup(createEmptyData());
     await screen.findByRole("heading", { name: "Visão geral", level: 1 });
     const header = document.querySelector(".topbar") as HTMLElement;
@@ -164,6 +164,9 @@ describe("cabeçalho e configurações", () => {
     expect(buttons).toHaveLength(2);
     expect(buttons[0].getAttribute("aria-label")).toMatch(/valores sensíveis/);
     expect(buttons[1].getAttribute("aria-label")).toMatch(/Ativar tema/);
+    const settings = within(header).getByRole("link", { name: "Configurações" });
+    expect(buttons[1].nextElementSibling).toBe(settings);
+    expect(within(screen.getByRole("navigation")).queryByRole("link", { name: "Configurações" })).toBeNull();
     expect(within(header).queryByText(/Salvo|Sincroniz|Offline|Salvando/)).toBeNull();
   });
 

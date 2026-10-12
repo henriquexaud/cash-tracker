@@ -6,6 +6,7 @@ import App from "../App";
 import { PrivacyContext, privacySettings } from "../privacy";
 import type { DataRepository } from "../repository";
 import type { AppData } from "../domain/types";
+import { today } from "../domain/finance";
 import { createTestData } from "../test/fixtures";
 import { createLocalSplitRepository, type SplitRepository } from "./repository";
 import type { SplitGroup } from "./types";
@@ -90,12 +91,12 @@ describe("Divisões", () => {
     submit("Adicionar");
     await screen.findByText("Bia e você");
 
-    // Two taps after typing: description and amount; payer and 50/50 are the defaults.
+    // Two taps after typing: description and amount; payer, 50/50 and today are the defaults.
     fireEvent.click(screen.getByRole("button", { name: "Adicionar despesa" }));
     expect((screen.getByLabelText("Quem pagou") as HTMLSelectElement).selectedOptions[0].textContent).toBe("Você");
     expect((screen.getByLabelText("Como dividir") as HTMLSelectElement).selectedOptions[0].textContent).toBe("Meio a meio");
     expect(within(screen.getByLabelText("Como dividir")).queryByText("Escolher quem participa")).toBeNull();
-    expect(screen.queryByLabelText(/Data/)).toBeNull();
+    expect((screen.getByLabelText("Data") as HTMLInputElement).value).toBe(today());
     type("Descrição", "Mercado");
     type("Valor (R$)", "50,01");
     expect(screen.getByRole("dialog").textContent).toMatch(/Você R\$\s25,01 · Bia R\$\s25,00/);
@@ -117,11 +118,16 @@ describe("Divisões", () => {
     // Editing the expense recalculates everything.
     fireEvent.click(screen.getByRole("button", { name: "Editar Mercado" }));
     type("Valor (R$)", "20,00");
+    type("Data", "");
+    submit("Salvar despesa");
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Informe a data/);
+    type("Data", "2026-03-07");
     fireEvent.change(screen.getByLabelText("Como dividir"), { target: { value: "single" } });
     expect(screen.getByRole("dialog").textContent).toMatch(/Bia assume R\$\s20,00/);
     submit("Salvar despesa");
     await waitFor(() => expect(debtsList().textContent).toMatch(/Bia deve R\$\s10,00 a você/));
-    expect(screen.getByText(/Você pagou · por conta de Bia/)).toBeTruthy();
+    expect(screen.getByText(/07 de mar\.? de 2026 · Você pagou · por conta de Bia/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Março de 2026/ }).textContent).toMatch(/R\$\s20,00/);
 
     // Full settlement, then removing it reopens the debt.
     fireEvent.click(screen.getByRole("button", { name: /^Acertar: Bia deve/ }));
@@ -173,6 +179,66 @@ describe("Divisões", () => {
     await waitFor(() => expect(debtsList().textContent).toMatch(/Você deve R\$\s50,00 a Bia/));
     expect(debtsList().textContent).toMatch(/Caio deve R\$\s50,00 a Bia/);
     expect(screen.getByText(/Bia pagou · dividido entre Caio e você/)).toBeTruthy();
+  });
+
+  it("escolhe o ícone da despesa pela descrição, sem alterar o dos acertos", async () => {
+    const entry = (id: string, description: string, kind: "expense" | "settlement" = "expense") => ({
+      id, kind, description, amount: 9000, paidBy: "ana", participants: kind === "expense" ? ["ana", "bia", "caio"] : ["bia"],
+      date: "2026-10-01", createdAt: `2026-10-01T10:00:0${id.slice(1)}Z`,
+    });
+    seed(trio([entry("e1", "Mercado"), entry("e2", "Diversos"), entry("e3", "", "settlement")]));
+    window.history.replaceState(null, "", "/#splits/g1");
+    setup();
+    const icon = async (title: string | RegExp) =>
+      (await screen.findByText(title)).closest(".movement-row")!.querySelector(".movement-icon svg")!;
+    expect((await icon("Mercado")).classList.contains("lucide-shopping-basket")).toBe(true);
+    expect((await icon("Diversos")).classList.contains("lucide-receipt")).toBe(true);
+    const settlement = await icon(/pagou Bia/);
+    expect(settlement.classList.contains("lucide-hand-coins")).toBe(true);
+    expect(settlement.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("resume o grupo, agrupa o histórico por mês e busca pela descrição", async () => {
+    const expense = (id: number, description: string, amount: number, paidBy: string, participants: string[], date: string) => ({
+      id: `e${id}`, kind: "expense" as const, description, amount, paidBy, participants, date, createdAt: `${date}T10:00:0${id}Z`,
+    });
+    const everyone = ["ana", "bia", "caio"];
+    seed(
+      trio([
+        expense(1, "Mercado", 9000, "ana", everyone, "2026-10-03"),
+        expense(2, "Pedágio", 3000, "bia", everyone, "2026-10-02"),
+        expense(3, "Cinema", 4000, "bia", ["bia", "caio"], "2026-10-01"),
+        expense(4, "Aluguel", 30000, "caio", everyone, "2026-09-10"),
+        expense(5, "Farmácia", 1000, "ana", ["bia"], "2026-09-05"),
+        { ...expense(6, "", 2000, "bia", ["ana"], "2026-09-04"), kind: "settlement" as const },
+      ]),
+      { ...trio(), id: "g2", name: "Casa" },
+    );
+    window.history.replaceState(null, "", "/#splits");
+    setup();
+    // Ana: paid 100,00 + received 20,00, owes 140,00 of shares.
+    expect((await screen.findByText(/Somando os grupos/)).textContent).toMatch(/você deve R\$\s60,00/);
+
+    fireEvent.click(screen.getByRole("link", { name: /Viagem/ }));
+    const totals = (await screen.findByText("Gasto do grupo")).closest("dl")!;
+    expect(totals.textContent).toMatch(/Gasto do grupoR\$\s470,00Sua parteR\$\s140,00Seu saldoVocê deve R\$\s60,00/);
+
+    const months = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(months[0]).toMatch(/Outubro de 2026R\$\s160,00/);
+    expect(months[1]).toMatch(/Setembro de 2026R\$\s310,00/);
+    const value = (title: string) => screen.getByText(title).closest(".movement-row")!.querySelector(".split-entry-value")!.textContent;
+    expect(value("Mercado")).toMatch(/R\$\s90,00você recebe R\$\s60,00/);
+    expect(value("Pedágio")).toMatch(/R\$\s30,00você deve R\$\s10,00/);
+    expect(value("Cinema")).toMatch(/R\$\s40,00não envolve você/);
+    expect(value("Bia pagou você")).toMatch(/^R\$\s20,00$/);
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar no histórico" }), { target: { value: " farmacia" } });
+    expect(screen.getByText("Farmácia")).toBeTruthy();
+    expect(screen.queryByText("Mercado")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
+    expect(totals.textContent).toMatch(/R\$\s470,00/);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "xyz" } });
+    expect(screen.getByRole("status").textContent).toMatch(/Nenhum lançamento com “xyz”/);
   });
 
   it("oculta os valores com o olho fechado, mantendo nomes e ações", async () => {

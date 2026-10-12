@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   balances,
   debts,
+  entryImpact,
   entryShares,
   normalizeInviteCode,
+  spending,
   timeline,
   validateEntry,
   validateSettlement,
@@ -139,6 +141,38 @@ describe("saldos e compensação", () => {
 
   it("inclui integrantes sem lançamentos com saldo zero", () => {
     expect(Object.fromEntries(balances(group()))).toEqual({ ana: 0, bia: 0, caio: 0 });
+  });
+});
+
+describe("resumo por pessoa", () => {
+  it("mostra o efeito de cada lançamento na posição de uma pessoa", () => {
+    const shared = expense(9000, "ana", ["ana", "bia", "caio"]);
+    expect(entryImpact(shared, "ana")).toBe(6000);
+    expect(entryImpact(shared, "bia")).toBe(-3000);
+    expect(entryImpact(expense(4000, "bia", ["bia", "caio"]), "ana")).toBe(0);
+    expect(entryImpact(expense(1000, "ana", ["bia"]), "ana")).toBe(1000);
+    expect(entryImpact(settlement(2000, "bia", "ana"), "ana")).toBe(-2000);
+  });
+
+  it("os efeitos dos lançamentos somam o saldo da pessoa", () => {
+    const current = group([
+      expense(1001, "ana", ["ana", "bia", "caio"]),
+      expense(700, "bia", ["ana", "caio"]),
+      settlement(300, "caio", "ana"),
+    ]);
+    for (const member of current.members)
+      expect(total(current.entries.map((entry) => entryImpact(entry, member.id)))).toBe(balances(current).get(member.id));
+  });
+
+  it("soma o gasto e a cota da pessoa sem contar acertos", () => {
+    const entries = [
+      expense(1001, "ana", ["ana", "bia", "caio"]),
+      expense(700, "bia", ["bia", "caio"]),
+      settlement(300, "bia", "ana"),
+    ];
+    expect(spending(entries, "ana")).toEqual({ spent: 1701, share: 334 });
+    expect(spending(entries, "caio")).toEqual({ spent: 1701, share: 683 });
+    expect(spending([], "ana")).toEqual({ spent: 0, share: 0 });
   });
 });
 

@@ -7,6 +7,7 @@
 | `src/main.tsx`, `src/config.ts` | Tema inicial, privacidade, seleção local/cloud e registro da PWA. |
 | `src/App.tsx` | Navegação por hash, mês selecionado, carregamento, mutações, modais, backup e avisos. |
 | `src/Pages.tsx`, `src/components/` | Cinco telas, gráficos, histórico, formulários e controles. |
+| `src/components/categoryIcon.ts` | Ícone deduzido do nome do gasto ou da descrição da despesa em Divisões; nada é gravado nos dados. |
 | `src/domain/types.ts`, `finance.ts`, `empty.ts` | Modelo, centavos, cálculos/validações e estado inicial vazio. |
 | `src/splits/` | Divisões: regras de divisão/compensação, repositórios local e cloud, tela e formulários. Veja [Divisões](#divisões). |
 | `src/repository.ts`, `src/storage.ts` | Contrato do repositório, IndexedDB local e formato de backup. |
@@ -56,6 +57,8 @@ Divisões é um módulo paralelo às cinco telas financeiras. O `App` apenas adi
 - Um lançamento tem valor em centavos, quem pagou e participantes. Despesa: dividida igualmente entre os participantes (todos, um só ou alguns). Acerto: quem pagou entregou o valor ao único participante. Os dois usam a mesma conta; não há divisão percentual.
 - Centavos que sobram ficam primeiro com quem pagou e depois seguem a ordem dos IDs, de modo que as cotas somam exatamente o valor e ninguém deve um valor arredondado para cima.
 - Saldo = pago − cotas; a soma do grupo é sempre zero. `debts` compensa as posições e produz no máximo um pagamento por par, casando o maior devedor com o maior credor. Um acerto novo não pode superar o valor em aberto; edições posteriores apenas recalculam os saldos.
+- Despesas e acertos têm data escolhida no formulário (hoje por padrão). O histórico é agrupado por mês, com o total gasto em cada um, e oferece busca pela descrição a partir de seis lançamentos.
+- O resumo do grupo mostra o gasto total, a parte de quem está usando e o saldo; cada despesa indica quanto essa pessoa recebe ou deve por ela (`entryImpact`, cuja soma é o saldo). Totais de gasto ignoram acertos (`spending`). Com mais de um grupo, a lista soma os saldos.
 - Qualquer participante pode editar ou excluir lançamentos do grupo. Não há remoção de participante nem exclusão de grupo.
 - Modo cloud: `split_groups`, `split_members` e `split_entries` ficam no Supabase, que é a única fonte dos dados compartilhados. A leitura é limitada por RLS a quem participa; toda gravação passa por funções `security definer` que identificam a conta por `auth.uid()` e validam que pagador e participantes pertencem ao grupo. O convite é um código aleatório de 12 caracteres; quem o possui entra no grupo. Cada participante escolhe o nome exibido; e-mails não são compartilhados. **Não há cópia offline nem fila de envio:** sem internet a tela informa a falha e as demais continuam funcionando.
 - Modo local: os grupos ficam em `localStorage` (`cash-tracker-splits`), separados do IndexedDB financeiro; como não há contas, participantes são adicionados pelo nome. Conteúdo ilegível gera erro e não é sobrescrito.

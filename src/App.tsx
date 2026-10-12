@@ -83,10 +83,11 @@ const navigation: { id: Page; label: string; icon: typeof Wallet }[] = [
   { id: "history", label: "Histórico", icon: TrendingUp },
   { id: "wealth", label: "Reserva", icon: Wallet },
   { id: "splits", label: "Divisões", icon: Users },
-  { id: "settings", label: "Configurações", icon: Settings2 },
 ];
+// Settings is reached from the header, next to the privacy and theme controls.
+const pages: Page[] = [...navigation.map((p) => p.id), "settings"];
 const readPage = (): Page =>
-  navigation.find((p) => `#${p.id}` === location.hash.split("/")[0])?.id ?? "dashboard";
+  pages.find((id) => `#${id}` === location.hash.split("/")[0]) ?? "dashboard";
 const lock = async <T,>(task: () => Promise<T>): Promise<T> =>
   navigator.locks
     ? await navigator.locks.request("cash-tracker-data", task)
@@ -956,6 +957,15 @@ export default function App({
                 <Moon size={18} />
               )}
             </button>
+            <a
+              href="#settings"
+              className="icon-button"
+              title="Configurações"
+              aria-label="Configurações"
+              aria-current={page === "settings" ? "page" : undefined}
+            >
+              <Settings2 size={18} />
+            </a>
           </div>
         </header>
         <main id="main-content" className={`main-content page-${page}`}>

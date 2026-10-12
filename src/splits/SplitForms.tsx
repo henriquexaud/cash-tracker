@@ -64,6 +64,7 @@ export function ExpenseForm({
   const everyone = group.members.map((member) => member.id);
   const [description, setDescription] = useState(entry?.description ?? "");
   const [amount, setAmount] = useState(entry ? moneyText(entry.amount) : "");
+  const [date, setDate] = useState(entry?.date ?? today());
   const [paidBy, setPaidBy] = useState(entry?.paidBy ?? group.me);
   const [mode, setMode] = useState<SplitMode>(
     !entry || entry.participants.length === everyone.length
@@ -91,7 +92,7 @@ export function ExpenseForm({
     amount: value ?? 0,
     paidBy,
     participants,
-    date: entry?.date ?? today(),
+    date,
     createdAt: entry?.createdAt ?? new Date().toISOString(),
   };
   const preview =
@@ -102,6 +103,7 @@ export function ExpenseForm({
     if (!description.trim()) return setError("Descreva a despesa.", "description");
     if (value === null || value <= 0)
       return setError("Informe um valor maior que zero, com até duas casas decimais.", "amount");
+    if (!date) return setError("Informe a data da despesa.", "date");
     const invalid = validateEntry(group, candidate);
     if (invalid) return setError(invalid);
     onSave(candidate);
@@ -126,6 +128,9 @@ export function ExpenseForm({
             />
           </Field>
           <MoneyField id={`${id}-amount`} label="Valor (R$)" value={amount} onChange={setAmount} enterKeyHint="done" />
+          <Field label="Data" id={`${id}-date`}>
+            <input className="input" type="date" name="date" id={`${id}-date`} value={date} onChange={(event) => setDate(event.target.value)} />
+          </Field>
           <Field label="Quem pagou" id={`${id}-payer`}>
             <Select id={`${id}-payer`} className="select" value={paidBy} onChange={(event) => setPaidBy(event.target.value)}>
               {group.members.map((member) => (
@@ -195,6 +200,7 @@ export function SettleForm({
 }) {
   const id = useId();
   const [amount, setAmount] = useState(moneyText(debt.amount));
+  const [date, setDate] = useState(today());
   const [error, setError, clearError] = useFormError(id);
 
   function submit(event: FormEvent) {
@@ -204,6 +210,7 @@ export function SettleForm({
       return setError("Informe um valor maior que zero, com até duas casas decimais.", "amount");
     if (value > debt.amount)
       return setError(`O acerto não pode ser maior que os ${formatMoney(debt.amount)} em aberto.`, "amount");
+    if (!date) return setError("Informe a data do pagamento.", "date");
     const entry: SplitEntry = {
       id: crypto.randomUUID(),
       kind: "settlement",
@@ -211,7 +218,7 @@ export function SettleForm({
       amount: value,
       paidBy: debt.from,
       participants: [debt.to],
-      date: today(),
+      date,
       createdAt: new Date().toISOString(),
     };
     const invalid = validateSettlement(group, entry);
@@ -232,6 +239,9 @@ export function SettleForm({
             autoFocus
             hint="Diminua o valor para um acerto parcial. O app apenas registra: nenhum pagamento é feito."
           />
+          <Field label="Data do pagamento" id={`${id}-date`}>
+            <input className="input" type="date" name="date" id={`${id}-date`} value={date} onChange={(event) => setDate(event.target.value)} />
+          </Field>
         </div>
         <FormError error={error} id={`${id}-error`} />
         <FormActions onClose={onClose} label="Registrar acerto" />
