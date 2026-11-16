@@ -6,7 +6,7 @@ import App from "../App";
 import { PrivacyContext, privacySettings } from "../privacy";
 import type { DataRepository } from "../repository";
 import type { AppData } from "../domain/types";
-import { today } from "../domain/finance";
+import { currentMonth, shiftMonth, today } from "../domain/finance";
 import { createTestData } from "../test/fixtures";
 import { createLocalSplitRepository, type SplitRepository } from "./repository";
 import type { SplitGroup } from "./types";
@@ -239,6 +239,44 @@ describe("Divisões", () => {
     expect(totals.textContent).toMatch(/R\$\s470,00/);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "xyz" } });
     expect(screen.getByRole("status").textContent).toMatch(/Nenhum lançamento com “xyz”/);
+  });
+
+  it("soma os gastos de mercado num card discreto, agrupando por estabelecimento", async () => {
+    const month = currentMonth();
+    const day = (delta: number, d: string) => `${shiftMonth(month, delta)}-${d}`;
+    const expense = (id: number, description: string, amount: number, date: string) => ({
+      id: `e${id}`, kind: "expense" as const, description, amount, paidBy: "ana", participants: ["ana", "bia"], date, createdAt: `${date}T10:00:0${id}Z`,
+    });
+    seed(
+      trio([
+        expense(1, "Mercado Tauste", 30000, day(-2, "03")),
+        expense(2, "Supermercado Assai", 50000, day(-2, "20")),
+        expense(3, "Supermercado - Tauste", 40000, day(-1, "05")),
+        expense(4, "Jantar", 99900, day(-1, "06")),
+        expense(5, "Mercado Livre", 7700, day(0, "01")),
+        expense(6, "Assaí", 20000, day(0, "02")),
+      ]),
+      { ...trio(), id: "g2", name: "Casa" },
+    );
+    window.history.replaceState(null, "", "/#splits/g1");
+    setup();
+    const card = (await screen.findByText("Gastos de mercado")).closest("details")!;
+    expect(card.open).toBe(false);
+    expect(card.querySelector("summary")!.textContent).toMatch(/R\$\s200,00 este mês/);
+    expect(card.querySelector("dl")!.textContent).toMatch(
+      /Este mêsR\$\s200,00Mês passadoR\$\s400,00Média mensal \(2 meses\)R\$\s600,00/,
+    );
+    const stores = within(card).getByRole("list", { name: "Gasto por mercado" });
+    expect([...stores.querySelectorAll("li")].map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/^Assaí2 comprasR\$\s700,00$/),
+      expect.stringMatching(/^Tauste2 comprasR\$\s700,00$/),
+    ]);
+    // The rest of the group is unchanged.
+    expect((await screen.findByText("Gasto do grupo")).closest("dl")!.textContent).toMatch(/R\$\s2\.476,00/);
+
+    window.location.hash = "#splits/g2";
+    await screen.findByRole("heading", { name: "Casa" });
+    expect(screen.queryByText("Gastos de mercado")).toBeNull();
   });
 
   it("oculta os valores com o olho fechado, mantendo nomes e ações", async () => {
