@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ChevronRight,
   HandCoins,
-  LoaderCircle,
   Pencil,
   Plus,
   Receipt,
@@ -203,10 +202,18 @@ export function SplitsPage({
                 </button>
               </>
             ) : (
-              <>
-                <LoaderCircle className="spin" aria-hidden="true" />
-                <p role="status">Abrindo suas divisões…</p>
-              </>
+              <div className="skeleton-list full-width">
+                {[0, 1, 2].map((row) => (
+                  <div className="skeleton-row" key={row} aria-hidden="true">
+                    <span className="skeleton" />
+                    <span className="skeleton-lines">
+                      <span className="skeleton" />
+                      <span className="skeleton" />
+                    </span>
+                  </div>
+                ))}
+                <p role="status" className="sr-only">Abrindo suas divisões…</p>
+              </div>
             )}
           </div>
         </section>

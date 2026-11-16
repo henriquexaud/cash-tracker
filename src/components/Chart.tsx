@@ -54,7 +54,8 @@ export function Chart({
     const element = container.current;
     if (!element) return;
     const measure = () =>
-      setWidth(Math.max(280, Math.min(720, element.clientWidth)));
+      // One SVG unit per CSS pixel keeps the axis text the same size in every chart.
+      setWidth(Math.max(280, Math.round(element.clientWidth)));
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -127,20 +128,32 @@ export function Chart({
     .map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(p.value)}`)
     .join(" ");
   const area = `${line} L ${x(points.length - 1)} ${top + chartH} L ${x(0)} ${top + chartH} Z`;
-  const tickIndices =
-    points.length <= 3
-      ? points.map((_, i) => i)
-      : width < 460
-        ? [0, Math.round((points.length - 1) / 2), points.length - 1]
-        : Array.from(
-            new Set([
-              0,
-              Math.round((points.length - 1) / 4),
-              Math.round((points.length - 1) / 2),
-              Math.round(((points.length - 1) * 3) / 4),
-              points.length - 1,
-            ]),
-          );
+  // Short, evenly spaced month labels, counted back from the latest month so
+  // the most recent one is always shown and none of them overlap.
+  const sameYear = points.every(
+    (point) => point.month.slice(0, 4) === points[0].month.slice(0, 4),
+  );
+  const tickLabel = (month: string) => {
+    const name = monthLabel(month, true).split(" ")[0];
+    return sameYear ? name : `${name}/${month.slice(2, 4)}`;
+  };
+  const labelWidth = (sameYear ? 30 : 48) + 16;
+  const maxTicks = Math.max(2, Math.floor(chartW / labelWidth) + 1);
+  const step = Math.max(1, Math.ceil((points.length - 1) / (maxTicks - 1)));
+  const tickIndices = points
+    .map((_, i) => i)
+    .filter((i) => (points.length - 1 - i) % step === 0)
+    .filter(
+      (i) =>
+        i === points.length - 1 ||
+        x(points.length - 1) - x(i) >= labelWidth,
+    );
+  const tickAnchor = (i: number) =>
+    x(i) - left < labelWidth / 2
+      ? "start"
+      : width - right - x(i) < labelWidth / 2
+        ? "end"
+        : "middle";
   const axisMoney = (v: number) =>
     Math.abs(v) >= 100000
       ? `${(v / 100000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`
@@ -247,13 +260,11 @@ export function Chart({
             key={i}
             x={x(i)}
             y={height - 5}
-            textAnchor={
-              i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"
-            }
+            textAnchor={tickAnchor(i)}
             className="chart-axis"
             style={{ fill: "var(--chart-axis, var(--muted))" }}
           >
-            {monthLabel(points[i].month, true)}
+            {tickLabel(points[i].month)}
           </text>
         ))}
         <circle

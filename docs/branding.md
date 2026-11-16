@@ -33,3 +33,9 @@ Ao alterar a marca por pedido explícito, use as imagens oficiais correspondente
 O HTML e o manifesto usam caminhos `wallet-*` para distinguir os assets da versão anterior em caches e atalhos. O `id`, escopo e início da PWA permanecem iguais, preservando a identidade do app instalado.
 
 Execute `npm run verify`, confira dimensões/arquivos e abra favicon e cabeçalho em desktop/celular, claro/escuro e com valores visíveis/ocultos. O build inclui todos esses arquivos no precache. A atualização de um ícone já instalado também depende do navegador/sistema; para conferir esse caso, use um dispositivo de teste e o roteiro de [verificação](verification.md).
+
+## Tipografia e escalas visuais
+
+A interface usa a fonte Inter (SIL Open Font License 1.1, ver [LICENSE-Inter.txt](../src/assets/fonts/LICENSE-Inter.txt)), em um único arquivo variável com o subconjunto latino (`src/assets/fonts/inter-latin-variable.woff2`, ~48 KB). O arquivo é importado pelo CSS, recebe hash no build e entra no precache do service worker como os demais arquivos de `dist`, então o app continua igual offline. Se a fonte não carregar, a pilha cai para a fonte do sistema.
+
+Tamanhos de fonte, pesos, espaçamentos e raios ficam em variáveis no início de [styles.css](../src/styles.css) (`--fs-*`, `--fw-*`, `--space-*`, `--radius-*`). Use essas variáveis em vez de números soltos ao criar ou ajustar estilos.

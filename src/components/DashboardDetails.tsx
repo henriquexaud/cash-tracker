@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Check, CircleAlert, Landmark, ListFilter, Wallet, type LucideIcon } from "lucide-react";
 import { budgetTotal, monthLabel, monthlySummary, shiftMonth, wealthStats } from "../domain/finance";
 import { usePrivacy } from "../privacy";
 import type { PageProps } from "../ui-types";
@@ -75,9 +75,15 @@ export function DashboardPlanning({ data, month, actions }: DashboardProps) {
         </div>
         {plan > 0 ? (
           <>
-            <div className="dashboard-saving-plan"><span>Planejado</span><strong>{money(plan)}</strong></div>
             <div className="dashboard-saving-status">
-              <strong>{protect(wealth.monthSaved < 0 ? "As retiradas superam os aportes" : wealth.monthSaved >= plan ? "Planejado alcançado" : `${percentage(savedShare)} do planejado`)}</strong>
+              {wealth.monthSaved < 0 ? (
+                <span className="status-badge warning"><CircleAlert size={14} aria-hidden="true" /><span>As retiradas superam os aportes</span></span>
+              ) : wealth.monthSaved >= plan ? (
+                <span className="status-badge success"><Check size={14} aria-hidden="true" /><span>Planejado alcançado</span></span>
+              ) : (
+                <span className="status-badge"><span>{protect(`${percentage(savedShare)} do planejado`)}</span></span>
+              )}
+              <span className="dashboard-saving-amount">{money(wealth.monthSaved)} <span>de {money(plan)}</span></span>
             </div>
             {hidden ? <div className="dashboard-progress values-hidden" aria-hidden="true" /> : (
               <div className="dashboard-progress" role="progressbar" aria-label="Progresso da reserva planejada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}
@@ -144,6 +150,68 @@ export function DashboardActivity({ data, month, actions }: DashboardProps) {
       <button type="button" className="panel-bottom-link" onClick={() => actions.navigate("wealth")}>
         Ver movimentações {movements.length > 3 ? `· ${movements.length} movimentações` : ""}<ArrowRight size={16} />
       </button>
+    </section>
+  );
+}
+
+type Step = { done: boolean; title: string; detail: string; action: string; icon: LucideIcon; run: () => void };
+
+/** A new account starts with a short guide instead of a screen of dashes. */
+export function DashboardFirstSteps({ data, month, actions }: DashboardProps) {
+  const steps: Step[] = [
+    {
+      done: data.salaries.length > 0,
+      title: "Registre o que recebeu",
+      detail: "O salário do mês é a base para calcular quanto sobra.",
+      action: "Adicionar salário",
+      icon: Wallet,
+      run: () => actions.editSalary(undefined, month),
+    },
+    {
+      done: data.budgets.length > 0 || data.budgetTemplate.length > 0,
+      title: "Estime os gastos do mês",
+      detail: "Aluguel, mercado, transporte: uma estimativa já basta.",
+      action: "Criar orçamento",
+      icon: ListFilter,
+      run: () => actions.navigate("budget"),
+    },
+    {
+      done: data.accounts.length > 0,
+      title: "Diga onde guarda dinheiro",
+      detail: "Um local de reserva para acompanhar aportes e rendimentos.",
+      action: "Adicionar local",
+      icon: Landmark,
+      run: actions.addAccount,
+    },
+  ];
+  const completed = steps.filter((step) => step.done).length;
+  if (completed === steps.length || data.movements.length > 0) return null;
+  return (
+    <section className="panel first-steps" aria-labelledby="first-steps-title">
+      <div className="panel-heading">
+        <div>
+          <h2 id="first-steps-title">Primeiros passos</h2>
+          <span className="subtle">Três registros rápidos para a visão geral ganhar vida.</span>
+        </div>
+        <span className="first-steps-count">{completed} de {steps.length}</span>
+      </div>
+      <ol className="first-steps-list">
+        {steps.map((step) => {
+          const Icon = step.done ? Check : step.icon;
+          return (
+            <li key={step.title} className={step.done ? "done" : ""}>
+              <span className="first-steps-icon"><Icon size={18} aria-hidden="true" /></span>
+              <span className="first-steps-copy">
+                <strong>{step.title}</strong>
+                <span>{step.done ? "Concluído" : step.detail}</span>
+              </span>
+              {!step.done && (
+                <button type="button" className="button secondary small" onClick={step.run}>{step.action}</button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
