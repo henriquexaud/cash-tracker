@@ -19,7 +19,7 @@ Sem estes passos o app continua funcionando; a seção apenas informa que os avi
 
 2. **Escolha um segredo** longo e aleatório para o banco chamar a função, por exemplo `openssl rand -hex 32`.
 
-3. **Publique a Edge Function** `supabase/functions/push`, sem verificação de JWT (ela confere o segredo do passo 2). Com o Supabase CLI:
+3. **Publique a Edge Function** `supabase/functions/push`, sem verificação de JWT (ela confere o segredo do passo 2; `supabase/config.toml` já desliga a verificação). A função usa a chave secreta do projeto (`SUPABASE_SECRET_KEYS`, injetada pelo Supabase) e, na falta dela, a `service_role` legada. Com o Supabase CLI:
 
    ```sh
    npx supabase login
@@ -48,7 +48,13 @@ Sem estes passos o app continua funcionando; a seção apenas informa que os avi
 
 Para testar: ligue o lembrete escolhendo o dia de hoje (ou um dia anterior) em um mês sem salário ou orçamento; o aviso chega na próxima verificação, no minuto 5 de cada hora, depois das 9h. Para Divisões, lance uma despesa com outra conta do grupo: o aviso chega em segundos.
 
-Se nada chegar, veja os logs da função (Edge Functions → push → Logs, uma linha `{"sent","expired","failed"}` por envio) e a tabela `net._http_response` para a resposta das chamadas do banco. Trocar as chaves VAPID invalida as inscrições existentes: cada dispositivo precisa desligar e ligar as opções.
+Se nada chegar:
+
+1. Execute `supabase/push-diagnostics.sql` no SQL Editor. Ele só lê: mostra se extensões, tabela, gatilho e segredos do Vault existem, quantos dispositivos têm Divisões ligado e as últimas respostas da função (`200` ok, `401` segredo diferente entre Vault e função, `404` função não publicada, `500` ver logs).
+2. Veja os logs da função (Edge Functions → push → Logs): uma linha `{"sent","expired","failed"}` por envio; `missing secrets` indica quais secrets faltam; `statuses` com `401`/`403` indica chaves VAPID diferentes das usadas na inscrição.
+3. Quem deve receber precisa ter ligado "Divisões" no próprio dispositivo; quem lançou a despesa nunca é avisado.
+
+Trocar as chaves VAPID invalida as inscrições existentes; o app refaz a inscrição sozinho na próxima abertura depois de publicado com a nova `VITE_VAPID_PUBLIC_KEY`.
 
 ## Como funciona
 

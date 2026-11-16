@@ -1,0 +1,7 @@
+# Used by the Supabase CLI when deploying functions (docs/notifications.md).
+project_id = "cash-tracker"
+
+# The database calls this function with its own secret (PUSH_SECRET), not a user JWT.
+# The platform's JWT check only understands the legacy keys, so it stays off.
+[functions.push]
+verify_jwt = false
