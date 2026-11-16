@@ -4,6 +4,8 @@ import {
   type FormEvent, type KeyboardEvent, type ReactElement, type ReactNode,
 } from "react";
 import {
+  accountBalanceOn,
+  balanceUpdate,
   formatMoney,
   parseMoney,
   today,
@@ -707,6 +709,7 @@ export function GoalForm({
   );
   const [target, setTarget] = useState(goal ? moneyText(goal.target) : "");
   const [allocated, setAllocated] = useState(moneyText(goal?.allocated ?? 0));
+  const [deadline, setDeadline] = useState(goal?.deadline ?? "");
   const [error, setError, clearError] = useFormError(id);
   const balance = data.movements
     .filter((movement) => movement.accountId === accountId)
@@ -739,6 +742,11 @@ export function GoalForm({
       target: targetAmount,
       allocated: allocatedAmount,
     };
+    if (deadline) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(deadline))
+        return setError("Informe um mês válido para o prazo.", "deadline");
+      candidate.deadline = deadline;
+    }
     const issue = validateGoal(data, candidate, goal?.id);
     if (issue) return setError(issue);
     onSave(candidate);
@@ -802,6 +810,25 @@ export function GoalForm({
             onChange={setAllocated}
             hint="Este valor destina dinheiro que já existe no local e não cria um novo aporte."
           />
+          <details className="form-optional" open={Boolean(goal?.deadline)}>
+            <summary>Prazo (opcional)</summary>
+            <Field
+              label="Mês para alcançar a meta"
+              id={`${id}-deadline`}
+              hint="Com um prazo, o objetivo mostra quanto guardar por mês."
+            >
+              <input
+                className="input"
+                type="month"
+                name="deadline"
+                id={`${id}-deadline`}
+                min="1900-01"
+                max="9999-12"
+                value={deadline}
+                onChange={(event) => setDeadline(event.target.value)}
+              />
+            </Field>
+          </details>
         </div>
         <div className="money-preview">
           <span>Disponível para este objetivo</span>
@@ -824,26 +851,30 @@ export function GoalForm({
 }
 
 export function AccountForm({
+  account,
   onSave,
   onClose,
-  description = "Dê um nome ao local onde seu dinheiro está guardado. O registro é manual.",
+  description = account
+    ? "O novo nome aparece em todas as movimentações e objetivos deste local."
+    : "Dê um nome ao local onde seu dinheiro está guardado. O registro é manual.",
 }: {
+  account?: Account;
   onSave: (account: Account) => void;
   onClose: () => void;
   description?: string;
 }) {
   const id = useId();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(account?.name ?? "");
   const [error, setError, clearError] = useFormError(id);
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return setError("Informe o nome do local.", "name");
-    onSave({ id: newId(), name: name.trim() });
+    onSave({ id: account?.id ?? newId(), name: name.trim() });
   }
 
   return (
     <Modal
-      title="Adicionar local de reserva"
+      title={account ? "Renomear local" : "Adicionar local de reserva"}
       description={description}
       onClose={onClose}
     >
@@ -1024,6 +1055,110 @@ export function LegacyForm({
             data.legacy.status === "resolved"
           }
         />
+      </EntryForm>
+    </Modal>
+  );
+}
+
+/**
+ * Records the balance the bank shows: the difference to what is registered becomes a
+ * return (or a loss), or the opening balance of a place without movements.
+ */
+export function BalanceForm({
+  data,
+  account,
+  initialDate,
+  onSave,
+  onClose,
+}: {
+  data: AppData;
+  account: Account;
+  initialDate?: string;
+  onSave: (movement: Movement) => void;
+  onClose: () => void;
+}) {
+  const id = useId();
+  const [date, setDate] = useState(initialDate ?? today());
+  const [amount, setAmount] = useState("");
+  const [error, setError, clearError] = useFormError(id);
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const registered = validDate ? accountBalanceOn(data, account.id, date) : null;
+  const shown = parsedAmount(amount);
+  const preview =
+    validDate && shown !== null && shown >= 0
+      ? balanceUpdate(data, account.id, date, shown)
+      : undefined;
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!validDate) return setError("Informe uma data válida.", "date");
+    if (shown === null || shown < 0)
+      return setError(
+        "Informe o saldo atual, maior ou igual a zero, com até duas casas decimais.",
+        "amount",
+      );
+    const update = balanceUpdate(data, account.id, date, shown);
+    if (!update)
+      return setError("O saldo informado já é o saldo registrado nessa data. Nada a atualizar.", "amount");
+    const candidate: Movement = {
+      id: newId(),
+      accountId: account.id,
+      date,
+      kind: update.kind,
+      amount: update.amount,
+      note: update.kind === "return" ? "Atualização de saldo" : "",
+    };
+    const issue = validateMovement(data, candidate);
+    if (issue) return setError(issue);
+    onSave(candidate);
+  }
+
+  return (
+    <Modal
+      title="Atualizar saldo"
+      description={account.name}
+      onClose={onClose}
+    >
+      <EntryForm id={id} error={error} clearError={clearError} onSubmit={submit}>
+        <div className="form-grid">
+          <MoneyField
+            id={`${id}-amount`}
+            label="Saldo que o local mostra (R$)"
+            value={amount}
+            onChange={setAmount}
+            hint="A diferença para o saldo registrado entra como rendimento, ou como perda se for menor."
+            enterKeyHint="done"
+            autoFocus
+          />
+          <Field label="Data do saldo" id={`${id}-date`}>
+            <input
+              className="input"
+              type="date"
+              name="date"
+              required
+              id={`${id}-date`}
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="money-preview">
+          <span>Saldo registrado nessa data</span>
+          <strong>{registered === null ? "—" : formatMoney(registered)}</strong>
+        </div>
+        {preview !== undefined && (
+          <p className="form-hint" aria-live="polite">
+            {preview === null
+              ? "O saldo informado é igual ao registrado."
+              : preview.kind === "opening"
+                ? "Este local ainda não tem movimentações: o valor será o saldo inicial."
+                : preview.amount > 0
+                  ? `Será registrado um rendimento de ${formatMoney(preview.amount)}.`
+                  : `Será registrada uma perda de ${formatMoney(-preview.amount)}.`}
+          </p>
+        )}
+        <FormError error={error} id={`${id}-error`} />
+        <FormActions onClose={onClose} label="Atualizar saldo" />
       </EntryForm>
     </Modal>
   );

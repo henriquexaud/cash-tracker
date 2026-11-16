@@ -25,9 +25,12 @@ export interface Actions {
   editGoal: (goal?: Goal) => void;
   removeGoal: (goal: Goal) => void;
   addAccount: () => void;
+  renameAccount: (account: Account) => void;
+  updateBalance: (account: Account) => void;
   removeAccount: (account: Account) => void;
   reviewLegacy: () => void;
   backup: () => void;
+  exportCsv: () => void;
   restore: () => void;
   signOut: () => void;
   requestPersistence: () => void;

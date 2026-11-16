@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -19,11 +19,14 @@ import {
   Wallet,
   Pencil,
   Landmark,
+  RefreshCw,
 } from "lucide-react";
 import { categoryIcon } from "./components/categoryIcon";
 import {
   accountBalance,
   budgetTotal,
+  compareMovementsNewestFirst,
+  goalPlan,
   monthLabel,
   monthlySummary,
   salarySeries,
@@ -32,11 +35,12 @@ import {
   wealthSeries,
   wealthStats,
 } from "./domain/finance";
-import type { BudgetItem, Movement, MovementKind } from "./domain/types";
+import type { BudgetItem, Goal, Movement, MovementKind } from "./domain/types";
 import { usePrivacy } from "./privacy";
 import { Select } from "./components/Select";
 import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
+import { YearSummary } from "./components/YearSummary";
 import { useHistoryYear } from "./components/useHistoryYear";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { DashboardActivity, DashboardFirstSteps, DashboardPlanning } from "./components/DashboardDetails";
@@ -482,7 +486,7 @@ export function BudgetPage({ data, month, actions }: PageProps) {
 export function HistoryPage(props: PageProps) {
   const { money: formatMoney, hidden, protect } = usePrivacy();
   const { data, month, actions } = props;
-  const [tab, setTab] = useState<"salary" | "budget">("salary");
+  const [tab, setTab] = useState<"salary" | "budget" | "year">("salary");
   const [range, setRange] = useState(0);
   const { year, setYear, years } = useHistoryYear(month, data.salaries.map(s => s.month));
   const stats = salaryStats(data.salaries);
@@ -510,8 +514,22 @@ export function HistoryPage(props: PageProps) {
       >
         Orçamentos
       </button>
+      <button
+        className={tab === "year" ? "active" : ""}
+        aria-pressed={tab === "year"}
+        onClick={() => setTab("year")}
+      >
+        Ano
+      </button>
     </div>
   );
+  if (tab === "year")
+    return (
+      <>
+        {tabs}
+        <YearSummary {...props} />
+      </>
+    );
   if (tab === "budget")
     return (
       <>
@@ -625,9 +643,9 @@ export function HistoryPage(props: PageProps) {
             <span />
           </div>
           {filtered.map((salary) => {
-            const previous = data.salaries.find(
-              (s) => s.month === shiftMonth(salary.month, -1),
-            );
+            // Compared with the previous record, even when months are missing in between.
+            const previous = records.find((s) => s.month < salary.month);
+            const gap = previous && previous.month !== shiftMonth(salary.month, -1);
             const growth =
               previous && previous.amount
                 ? ((salary.amount - previous.amount) / previous.amount) * 100
@@ -653,6 +671,9 @@ export function HistoryPage(props: PageProps) {
                   {growth === null
                     ? "—"
                     : protect(growth === 0 ? "Sem alteração" : percent(growth))}
+                  {growth !== null && gap && (
+                    <small className="growth-since">desde {monthLabel(previous!.month)}</small>
+                  )}
                 </span>
                 <div className="row-actions">
                   <button
@@ -706,7 +727,16 @@ export function WealthPage({ data, month, actions }: PageProps) {
   const allocated = data.goals.reduce((total, g) => total + g.allocated, 0);
   const movements = [...data.movements]
     .filter((m) => period === "all" || m.date.startsWith(month))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    .sort(compareMovementsNewestFirst);
+  // The whole history reads month by month, each with what it added to the reserve.
+  const groups: { month: string; net: number; items: Movement[] }[] = [];
+  for (const movement of movements) {
+    const key = period === "all" ? movement.date.slice(0, 7) : month;
+    let group = groups.at(-1);
+    if (!group || group.month !== key) groups.push((group = { month: key, net: 0, items: [] }));
+    group.items.push(movement);
+    group.net += movement.kind === "withdrawal" ? -movement.amount : movement.amount;
+  }
   if (
     !data.movements.length &&
     !data.goals.length &&
@@ -745,6 +775,13 @@ export function WealthPage({ data, month, actions }: PageProps) {
               <strong>{protect(account.name)}</strong>
               <span>Sem movimentações</span>
             </div>
+            <button
+              className="icon-button"
+              aria-label={`Renomear local ${protect(account.name)}`}
+              onClick={() => actions.renameAccount(account)}
+            >
+              <Pencil size={14} />
+            </button>
             <button
               className="icon-button muted"
               aria-label={`Excluir local ${protect(account.name)}`}
@@ -845,6 +882,21 @@ export function WealthPage({ data, month, actions }: PageProps) {
                     : formatMoney(accountBalance(data, account.id))}
                 </span>
               </div>
+              <button
+                className="icon-button"
+                title="Atualizar saldo"
+                aria-label={`Atualizar saldo de ${protect(account.name)}`}
+                onClick={() => actions.updateBalance(account)}
+              >
+                <RefreshCw size={14} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label={`Renomear local ${protect(account.name)}`}
+                onClick={() => actions.renameAccount(account)}
+              >
+                <Pencil size={14} />
+              </button>
               {!data.movements.some((m) => m.accountId === account.id) &&
                 !data.goals.some((g) => g.accountId === account.id) && (
                   <button
@@ -877,7 +929,18 @@ export function WealthPage({ data, month, actions }: PageProps) {
             <option value="month">{monthLabel(month)}</option>
           </Select>
         </div>
-        {movements.map((movement) => (
+        {groups.map((group) => (
+          <Fragment key={group.month}>
+            {period === "all" && (
+              <div className="movement-month">
+                <span>{monthLabel(group.month)}</span>
+                <span className={hidden ? "muted" : group.net < 0 ? "negative" : "positive"}>
+                  {!hidden && group.net > 0 ? "+ " : ""}
+                  {formatMoney(group.net)}
+                </span>
+              </div>
+            )}
+            {group.items.map((movement) => (
           <div className="movement-row" key={movement.id}>
             <span
               className={`movement-icon ${movement.kind === "withdrawal" ? "withdrawal" : ""}`}
@@ -937,6 +1000,8 @@ export function WealthPage({ data, month, actions }: PageProps) {
               </button>
             </div>
           </div>
+            ))}
+          </Fragment>
         ))}
         {!movements.length && (
           <div className="empty-state">
@@ -1034,6 +1099,7 @@ export function WealthPage({ data, month, actions }: PageProps) {
                     />
                   </div>
                 )}
+                <GoalStatus goal={goal} month={month} />
                 <p>
                   {protect(
                     data.accounts.find((a) => a.id === goal.accountId)?.name ??
@@ -1050,6 +1116,23 @@ export function WealthPage({ data, month, actions }: PageProps) {
         )}
       </details>
     </>
+  );
+}
+
+function GoalStatus({ goal, month }: { goal: Goal; month: string }) {
+  const { money } = usePrivacy();
+  const plan = goalPlan(goal, month);
+  if (!plan.remaining)
+    return <p className="goal-status done">Meta alcançada</p>;
+  return (
+    <p className="goal-status">
+      Faltam {money(plan.remaining)}
+      {goal.deadline && (
+        plan.overdue
+          ? <> · prazo encerrado em {monthLabel(goal.deadline)}</>
+          : <> · {money(plan.monthly!)} por mês até {monthLabel(goal.deadline)}</>
+      )}
+    </p>
   );
 }
 
@@ -1103,9 +1186,10 @@ export function SettingsPage({
           <div className="settings-row-actions">
             <button className="button primary" onClick={actions.backup}><Download size={16} /> Exportar backup</button>
             <button className="button secondary" onClick={actions.restore}>Restaurar backup</button>
+            <button className="text-button" onClick={actions.exportCsv}>Exportar planilha (CSV)</button>
           </div>
         </div>
-        <p className="settings-detail-note">Guarde o arquivo em um lugar seguro: ele inclui os valores, mesmo quando estão ocultos no app. Restaurar um backup substitui os registros atuais e pede sua confirmação.</p>
+        <p className="settings-detail-note">Guarde o arquivo em um lugar seguro: ele inclui os valores, mesmo quando estão ocultos no app. Restaurar um backup substitui os registros atuais e pede sua confirmação. A planilha CSV serve para consultar em outro programa; ela não restaura dados.</p>
         <details className="settings-storage-details">
           <summary>Sobre seus dados <ChevronRight size={16} aria-hidden="true" /></summary>
           <div>

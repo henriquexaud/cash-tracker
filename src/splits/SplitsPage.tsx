@@ -183,12 +183,13 @@ export function SplitsPage({
   // An invite link opens the join form once, then leaves the address clean.
   const invite = route.invite;
   useEffect(() => {
-    if (invite === undefined || !groups) return;
+    // Waits for the list (to know the groups), but a failed load still opens the invite.
+    if (invite === undefined || (!groups && !loadError)) return;
     history.replaceState(history.state, "", "#splits");
     setRoute({});
     if (repository.joinGroup) joinGroup(normalizeInviteCode(invite));
     else notify("Convites funcionam apenas com conta. Neste modo, adicione participantes pelo nome.", true);
-  }, [invite, !groups]);
+  }, [invite, !groups, !loadError]);
 
   const group = groups?.find((row) => row.id === route.group);
   const content = () => {

@@ -1,7 +1,7 @@
 {
   "name": "cash-tracker",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -17,7 +17,7 @@
     "test:storage": "vitest run src/storage.test.ts src/storage.integration.test.ts",
     "test:sync": "vitest run src/sync/sync.test.ts",
     "test:auth": "vitest run src/auth",
-    "test:ui": "vitest run src/dashboard.test.tsx src/first-use.test.tsx src/ux.test.tsx src/privacy.test.tsx src/theme.test.ts src/refinements.test.tsx",
+    "test:ui": "vitest run src/dashboard.test.tsx src/first-use.test.tsx src/ux.test.tsx src/privacy.test.tsx src/theme.test.ts src/refinements.test.tsx src/improvements.test.tsx",
     "test:pwa": "vitest run src/pwa.test.ts",
     "test:splits": "vitest run src/splits",
     "test:harness": "node --test scripts/check-build.node-test.mjs",

@@ -3176,3 +3176,72 @@ textarea.input {
 .panel-bottom-link svg {
   transition: transform var(--duration-fast) var(--ease-out);
 }
+
+/* Locais: atualizar saldo e renomear ficam ao lado do valor, discretos. */
+.account-row .icon-button {
+  flex-shrink: 0;
+}
+
+/* Objetivos: quanto falta e, com prazo, quanto guardar por mês. */
+.goal-card p.goal-status {
+  color: var(--text);
+  margin-top: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.goal-card p.goal-status.done {
+  color: var(--positive);
+}
+.goal-card p.goal-status + p {
+  margin-top: 4px;
+}
+
+/* Todo o histórico de movimentações, separado por mês com o saldo do mês. */
+.movement-month {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 18px 0 6px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+.movement-month > span:first-child::first-letter {
+  text-transform: uppercase;
+}
+.movement-month > span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+.movement-month > .positive { color: var(--positive); }
+.movement-month > .negative { color: var(--negative); }
+.movement-month + .movement-row { padding-top: 16px; }
+
+/* Variação salarial comparada a um mês anterior que não é o imediatamente anterior. */
+.growth-since {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-weight: var(--fw-regular);
+}
+
+/* Resumo do ano no Histórico. */
+.year-summary {
+  display: grid;
+  gap: 20px;
+}
+.year-row > :nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.year-row > strong.negative {
+  color: var(--negative);
+}
+@media (max-width: 760px) {
+  .account-row {
+    gap: 6px;
+  }
+  .year-row {
+    grid-template-columns: minmax(0, 1fr) auto 72px;
+  }
+}

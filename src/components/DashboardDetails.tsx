@@ -1,5 +1,5 @@
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Check, CircleAlert, Landmark, ListFilter, Wallet, type LucideIcon } from "lucide-react";
-import { budgetTotal, monthLabel, monthlySummary, shiftMonth, wealthStats } from "../domain/finance";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Check, CircleAlert, Landmark, ListFilter, TrendingUp, Wallet, type LucideIcon } from "lucide-react";
+import { budgetTotal, compareMovementsNewestFirst, monthLabel, monthlySummary, shiftMonth, wealthStats } from "../domain/finance";
 import { usePrivacy } from "../privacy";
 import type { PageProps } from "../ui-types";
 
@@ -116,7 +116,7 @@ export function DashboardActivity({ data, month, actions }: DashboardProps) {
   const { money, protect, hidden } = usePrivacy();
   const movements = data.movements
     .filter((entry) => entry.date.slice(0, 7) === month)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort(compareMovementsNewestFirst);
   const labels = { contribution: "Aporte", withdrawal: "Retirada", return: "Rendimento", opening: "Saldo inicial" };
   return (
     <section className="panel dashboard-activity" aria-labelledby="dashboard-activity-title">
@@ -130,7 +130,7 @@ export function DashboardActivity({ data, month, actions }: DashboardProps) {
               ? monthLabel(month, true)
               : new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(`${movement.date}T12:00:00`));
             const account = data.accounts.find((entry) => entry.id === movement.accountId);
-            const Icon = movement.kind === "withdrawal" ? ArrowUpRight : movement.kind === "contribution" ? ArrowDownLeft : Wallet;
+            const Icon = movement.kind === "withdrawal" ? ArrowUpRight : movement.kind === "return" ? TrendingUp : ArrowDownLeft;
             return (
               <li key={movement.id}>
                 <button type="button" onClick={() => actions.editMovement(movement)} aria-label={`Editar ${labels[movement.kind]} de ${date}`}>
