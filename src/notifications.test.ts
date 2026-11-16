@@ -165,6 +165,26 @@ describe("neste dispositivo", () => {
     expect(await syncPush(account, prefs, null, "AQID")).toBe("failed");
   });
 
+  it("refaz a inscrição feita com outra chave VAPID", async () => {
+    const { subscription, pushManager } = device(true);
+    Object.assign(subscription, { options: { applicationServerKey: Uint8Array.of(9, 9, 9).buffer } });
+    const account = server();
+    const prefs = { reminderDay: null, splits: true };
+    expect(await syncPush(account, prefs, null, " AQID\n")).toBe("on");
+    expect(account.remove).toHaveBeenCalledWith("https://fcm.googleapis.com/fcm/send/abc");
+    expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(account.save).toHaveBeenCalledOnce();
+  });
+
+  it("mantém a inscrição feita com a mesma chave", async () => {
+    const { subscription, pushManager } = device(true);
+    Object.assign(subscription, { options: { applicationServerKey: Uint8Array.of(1, 2, 3).buffer } });
+    expect(await syncPush(server(), { reminderDay: 5, splits: false }, null, "AQID")).toBe("on");
+    expect(subscription.unsubscribe).not.toHaveBeenCalled();
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+  });
+
   it("remove a inscrição ao desligar tudo e ao sair da conta", async () => {
     const off = { reminderDay: null, splits: false };
     const first = device(true);

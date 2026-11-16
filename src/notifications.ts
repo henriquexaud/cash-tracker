@@ -141,9 +141,15 @@ export async function checkLocalReminder(data: AppData) {
   }
 }
 
-const VAPID_PUBLIC_KEY: string = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? "";
+// Trimmed: a key pasted in the Vercel panel often carries a trailing space or line break.
+const VAPID_PUBLIC_KEY: string = (import.meta.env.VITE_VAPID_PUBLIC_KEY ?? "").trim();
 const decodeKey = (value: string) =>
   Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0));
+const sameKey = (current: ArrayBuffer | null | undefined, expected: Uint8Array) => {
+  if (!current) return true; // Browsers that do not expose it keep the subscription.
+  const bytes = new Uint8Array(current);
+  return bytes.length === expected.length && bytes.every((byte, index) => byte === expected[index]);
+};
 
 export const pushSupported = () =>
   typeof Notification !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
@@ -156,8 +162,9 @@ export async function syncPush(
   server: PushServer,
   prefs: NotificationPrefs,
   doneMonth: Month | null,
-  publicKey = VAPID_PUBLIC_KEY,
+  key = VAPID_PUBLIC_KEY,
 ): Promise<PushStatus> {
+  const publicKey = key.trim();
   if (!pushSupported() || !publicKey) return "unavailable";
   try {
     const registration = await navigator.serviceWorker.getRegistration();
@@ -171,11 +178,19 @@ export async function syncPush(
       return "off";
     }
     if (notificationPermission() !== "granted") return "blocked";
+    const applicationServerKey = decodeKey(publicKey);
+    // A subscription made with other VAPID keys is refused by the push service (401/403):
+    // after the keys change, every device must subscribe again.
+    if (subscription && !sameKey(subscription.options?.applicationServerKey, applicationServerKey)) {
+      await server.remove(subscription.endpoint).catch(() => {});
+      await subscription.unsubscribe();
+      subscription = null;
+    }
     if (!subscription) {
       await navigator.serviceWorker.ready;
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: decodeKey(publicKey),
+        applicationServerKey,
       });
     }
     const { endpoint, keys } = subscription.toJSON();
