@@ -6,16 +6,18 @@ import {
   Pencil,
   Plus,
   Receipt,
+  ShoppingBasket,
   Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
-import { formatMoney, monthLabel } from "../domain/finance";
+import { currentMonth, formatMoney, monthLabel } from "../domain/finance";
 import { categoryIcon } from "../components/categoryIcon";
 import { Modal } from "../components/Modal";
 import { DialogActions, SavingContext } from "../components/Saving";
 import { usePrivacy } from "../privacy";
 import { balances, debts, entryImpact, normalizeInviteCode, spending, timeline } from "./domain";
+import { grocerySummary } from "./grocery";
 import type { SplitRepository } from "./repository";
 import { ExpenseForm, NamesForm, SettleForm, capitalized, debtText, memberName } from "./SplitForms";
 import type { SplitEntry, SplitGroup } from "./types";
@@ -426,6 +428,58 @@ export function SplitsPage({
     );
   };
 
+  /** Discreet guide for the grocery budget: expenses whose description looks like a grocery trip. */
+  const groceryCard = (current: SplitGroup) => {
+    const summary = grocerySummary(current.entries, currentMonth());
+    if (!summary) return null;
+    return (
+      <details className="panel optional-panel split-grocery">
+        <summary>
+          <span>
+            <ShoppingBasket size={17} aria-hidden="true" /> Gastos de mercado
+          </span>
+          <span className="optional-value">{money(summary.thisMonth)} este mês</span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </summary>
+        <dl className="split-totals">
+          <div>
+            <dt>Este mês</dt>
+            <dd>{money(summary.thisMonth)}</dd>
+          </div>
+          <div>
+            <dt>Mês passado</dt>
+            <dd>{money(summary.lastMonth)}</dd>
+          </div>
+          <div>
+            <dt>
+              {summary.averageMonths === 1 ? "Média mensal (1 mês)" : `Média mensal (${summary.averageMonths} meses)`}
+            </dt>
+            <dd>{summary.average === null ? "Sem mês completo" : money(summary.average)}</dd>
+          </div>
+        </dl>
+        <p className="split-month">
+          <span>Por mercado, desde {monthLabel(summary.since)}</span>
+        </p>
+        <ul className="split-grocery-stores" aria-label="Gasto por mercado">
+          {summary.stores.map((store) => (
+            <li key={store.key}>
+              <span>
+                {store.name || "Sem nome do mercado"}
+                <small>
+                  {store.count} {store.count === 1 ? "compra" : "compras"}
+                </small>
+              </span>
+              <strong>{money(store.total)}</strong>
+            </li>
+          ))}
+        </ul>
+        <p className="form-hint">
+          Soma as despesas do grupo com “mercado”, “supermercado” ou o nome de uma rede na descrição. Acertos não entram.
+        </p>
+      </details>
+    );
+  };
+
   const groupView = (current: SplitGroup) => {
     const owed = debts(current);
     const entries = timeline(current);
@@ -510,6 +564,7 @@ export function SplitsPage({
             </p>
           )}
         </section>
+        {groceryCard(current)}
         <section className="panel movement-panel">
           <div className="panel-heading">
             <div>

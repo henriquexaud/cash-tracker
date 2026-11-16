@@ -2948,6 +2948,50 @@ textarea.input {
 .split-entry-value span.negative {
   color: var(--negative);
 }
+.split-grocery {
+  margin-bottom: 24px;
+}
+.split-grocery > summary > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.split-grocery > summary > span:first-child svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.split-grocery .split-totals {
+  margin-top: 4px;
+}
+.split-grocery-stores {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.split-grocery-stores li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.split-grocery-stores li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.split-grocery-stores small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.split-grocery-stores strong {
+  flex-shrink: 0;
+  font-weight: var(--fw-medium);
+}
 @media (max-width: 370px) {
   /* On the narrowest phones a two-word label stacks to leave room between tabs. */
   .nav-link span {
