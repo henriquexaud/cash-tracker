@@ -41,6 +41,8 @@ export interface Goal {
   accountId: string;
   target: number;
   allocated: number;
+  /** Optional month (AAAA-MM) by which the target should be reached. */
+  deadline?: Month;
 }
 export interface LegacyImport {
   status: "none" | "pending" | "resolved";

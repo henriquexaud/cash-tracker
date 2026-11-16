@@ -413,6 +413,8 @@ export function validateGoal(
     return "Informe um valor positivo para a meta.";
   if (!Number.isSafeInteger(goal.allocated) || goal.allocated < 0)
     return "Informe um valor destinado válido.";
+  if (goal.deadline !== undefined && !validMonth(goal.deadline))
+    return "Informe um prazo válido.";
   if (
     data.goals.some((entry) => entry.id === goal.id && entry.id !== excludeId)
   )
@@ -433,4 +435,158 @@ export function validateGoal(
     return "O valor ultrapassa o limite monetário permitido.";
   }
   return null;
+}
+
+const chronologicalKind: Record<Movement["kind"], number> = {
+  opening: 0,
+  contribution: 1,
+  return: 2,
+  withdrawal: 3,
+};
+/**
+ * Newest first. Entries of the same day have no recorded time, so they follow a fixed
+ * order (opening, contributions, returns, withdrawals, read from the bottom up) on every screen.
+ */
+export function compareMovementsNewestFirst(a: Movement, b: Movement): number {
+  return (
+    b.date.localeCompare(a.date) ||
+    chronologicalKind[b.kind] - chronologicalKind[a.kind] ||
+    b.id.localeCompare(a.id)
+  );
+}
+
+/** Lowest running balance (by date, grouping same-day entries) and the final balance. */
+function ledger(movements: Movement[]): { lowest: number; final: number } {
+  const byDate = new Map<string, number[]>();
+  for (const entry of movements)
+    byDate.set(entry.date, [...(byDate.get(entry.date) ?? []), movementValue(entry)]);
+  let balance = 0;
+  let lowest = 0;
+  for (const date of [...byDate.keys()].sort()) {
+    balance = safeSum([balance, ...byDate.get(date)!]);
+    lowest = Math.min(lowest, balance);
+  }
+  return { lowest, final: balance };
+}
+
+/**
+ * Explains why deleting a movement is refused, in the words of the deletion. An account
+ * that already has a conflict (synchronized edits) is left to the conflict review.
+ */
+export function validateMovementRemoval(
+  data: AppData,
+  movementId: string,
+): string | null {
+  const movement = data.movements.find((entry) => entry.id === movementId);
+  if (!movement) return null;
+  const accountMovements = data.movements.filter(
+    (entry) => entry.accountId === movement.accountId,
+  );
+  const allocated = safeSum(
+    data.goals
+      .filter((goal) => goal.accountId === movement.accountId)
+      .map((goal) => goal.allocated),
+  );
+  try {
+    const before = ledger(accountMovements);
+    if (before.lowest < 0 || allocated > before.final) return null;
+    const after = ledger(accountMovements.filter((entry) => entry.id !== movementId));
+    if (after.lowest < 0)
+      return "Excluir este registro deixaria o local com saldo negativo em alguma data. Exclua ou ajuste antes as retiradas que dependem dele.";
+    if (allocated > after.final)
+      return "Excluir este registro deixaria o saldo do local abaixo do valor destinado a objetivos. Ajuste os objetivos antes.";
+  } catch {
+    return "O valor ultrapassa o limite monetário permitido.";
+  }
+  return null;
+}
+
+/** Balance of an account including every movement up to the date, inclusive. */
+export function accountBalanceOn(data: AppData, accountId: string, date: string): number {
+  return safeSum(
+    data.movements
+      .filter((movement) => movement.accountId === accountId && movement.date <= date)
+      .map(movementValue),
+  );
+}
+
+/**
+ * "Update balance": the amount the bank shows becomes a return (or loss) for the
+ * difference, or the opening balance of an account that has no movements yet.
+ */
+export function balanceUpdate(
+  data: AppData,
+  accountId: string,
+  date: string,
+  shown: number,
+): { kind: "opening" | "return"; amount: number } | null {
+  const hasMovements = data.movements.some((movement) => movement.accountId === accountId);
+  if (!hasMovements) return { kind: "opening", amount: shown };
+  const difference = shown - accountBalanceOn(data, accountId, date);
+  if (!Number.isSafeInteger(difference)) throw new Error("Valor monetário fora do limite seguro.");
+  return difference === 0 ? null : { kind: "return", amount: difference };
+}
+
+/** Months between two months, counting both ends (zero when the end comes first). */
+export function monthsBetween(start: Month, end: Month): number {
+  if (!validMonth(start) || !validMonth(end)) throw new Error("Mês inválido.");
+  const index = (month: Month) => Number(month.slice(0, 4)) * 12 + Number(month.slice(5));
+  return Math.max(0, index(end) - index(start) + 1);
+}
+
+/** What is left to reach a goal and, with a deadline, how much to set aside each month. */
+export function goalPlan(goal: Goal, month: Month) {
+  const remaining = Math.max(0, goal.target - goal.allocated);
+  if (!goal.deadline || remaining === 0)
+    return { remaining, months: null, monthly: null, overdue: false };
+  const months = monthsBetween(month, goal.deadline);
+  return {
+    remaining,
+    months,
+    monthly: months ? Math.ceil(remaining / months) : null,
+    overdue: months === 0,
+  };
+}
+
+export interface YearMonthSummary {
+  month: Month;
+  salary: number | null;
+  expenses: number | null;
+  saved: number;
+  returns: number;
+  /** Saved over received, in percent; null without a positive salary. */
+  rate: number | null;
+}
+/** Received, estimated spending and money actually saved, per month of a year. */
+export function yearSummary(data: AppData, year: string) {
+  if (!/^\d{4}$/.test(year)) throw new Error("Ano inválido.");
+  const months: YearMonthSummary[] = [];
+  for (let index = 1; index <= 12; index++) {
+    const month = `${year}-${String(index).padStart(2, "0")}`;
+    const salary = data.salaries.find((entry) => entry.month === month)?.amount ?? null;
+    const budget = data.budgets.find((entry) => entry.month === month);
+    const inMonth = data.movements.filter((entry) => entry.date.slice(0, 7) === month);
+    if (salary === null && !budget && !inMonth.length) continue;
+    const sum = (kind: Movement["kind"]) =>
+      safeSum(inMonth.filter((entry) => entry.kind === kind).map((entry) => entry.amount));
+    const saved = safeSum([sum("contribution"), -sum("withdrawal")]);
+    months.push({
+      month,
+      salary,
+      expenses: budget ? budgetTotal(budget.items) : null,
+      saved,
+      returns: sum("return"),
+      rate: salary && salary > 0 ? (saved / salary) * 100 : null,
+    });
+  }
+  const received = safeSum(months.map((row) => row.salary ?? 0));
+  const saved = safeSum(months.map((row) => row.saved));
+  return {
+    months,
+    received,
+    expenses: safeSum(months.map((row) => row.expenses ?? 0)),
+    saved,
+    returns: safeSum(months.map((row) => row.returns)),
+    rate: received > 0 ? (saved / received) * 100 : null,
+  };
 }

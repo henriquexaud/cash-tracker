@@ -214,8 +214,9 @@ export function materialize(document: SyncDocument): AppData {
         break;
     }
   }
-  data.accounts = [...accounts.values()].sort((a, b) =>
-    a.id.localeCompare(b.id),
+  // Record order is not creation order here; by name, the list reads the same on every device.
+  data.accounts = [...accounts.values()].sort(
+    (a, b) => a.name.localeCompare(b.name, "pt-BR") || a.id.localeCompare(b.id),
   );
   data.budgets = [...budgets.values()].sort((a, b) =>
     a.month.localeCompare(b.month),

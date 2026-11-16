@@ -429,13 +429,16 @@ export function validateBackup(
     const accountId = string(item.accountId, `goals[${index}].accountId`);
     if (!accountIds.has(accountId))
       invalid(`goals[${index}].accountId`, "referencia uma conta inexistente");
-    return {
+    const goal: Goal = {
       id: string(item.id, `goals[${index}].id`),
       name: string(item.name, `goals[${index}].name`),
       accountId,
       target: integer(item.target, `goals[${index}].target`),
       allocated: integer(item.allocated, `goals[${index}].allocated`),
     };
+    if (item.deadline !== undefined)
+      goal.deadline = month(item.deadline, `goals[${index}].deadline`);
+    return goal;
   });
   unique(
     goals.map((item) => item.id),

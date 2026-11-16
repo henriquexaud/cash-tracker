@@ -29,7 +29,9 @@ import {
   today,
   validateGoal,
   validateMovement,
+  validateMovementRemoval,
 } from "./domain/finance";
+import { exportCsv } from "./csv";
 import { createEmptyData } from "./domain/empty";
 import { APP_VERSION } from "./config";
 import { needsReview, validateSynchronizedEdit } from "./sync/document";
@@ -54,6 +56,7 @@ import {
 import { requestPersistence } from "./pwa";
 import {
   AccountForm,
+  BalanceForm,
   BudgetItemForm,
   GoalForm,
   LegacyForm,
@@ -113,16 +116,20 @@ interface MutationOptions {
 const countLabel = (count: number, singular: string, plural: string) =>
   `${count} ${count === 1 ? singular : plural}`;
 
-function downloadBackup(data: AppData, prefix = "cash-tracker") {
-  const blob = new Blob([exportBackup(data)], { type: "application/json" });
+function downloadFile(content: string, type: string, name: string) {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${prefix}-${today()}.json`;
+  link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function downloadBackup(data: AppData, prefix = "cash-tracker") {
+  downloadFile(exportBackup(data), "application/json", `${prefix}-${today()}.json`);
 }
 
 export default function App({
@@ -196,6 +203,26 @@ export default function App({
       );
   }, [month]);
   const savingRef = useRef(false);
+  // An installed app can stay open for days: whoever was looking at the current month
+  // follows it when the month turns, instead of being left on the previous one.
+  const knownCurrentMonth = useRef(currentMonth());
+  useEffect(() => {
+    const follow = () => {
+      const now = currentMonth();
+      const previous = knownCurrentMonth.current;
+      if (now === previous) return;
+      knownCurrentMonth.current = now;
+      setMonth((selected) => (selected === previous ? now : selected));
+    };
+    const timer = setInterval(follow, 60000);
+    window.addEventListener("focus", follow);
+    document.addEventListener("visibilitychange", follow);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", follow);
+      document.removeEventListener("visibilitychange", follow);
+    };
+  }, []);
 
   const initialize = async () => {
     setLoadError("");
@@ -773,6 +800,8 @@ export default function App({
         `O lançamento de ${formatMoney(movement.amount)} será removido. A reserva será recalculada.`,
         () =>
           void commit((current) => {
+            const error = validateMovementRemoval(current, movement.id);
+            if (error) throw new Error(error);
             const next = {
               ...current,
               movements: current.movements.filter((m) => m.id !== movement.id),
@@ -835,6 +864,39 @@ export default function App({
               }),
               "Local de reserva adicionado.",
             )
+          }
+        />,
+      ),
+    renameAccount: (account) =>
+      setModal(
+        <AccountForm
+          account={account}
+          onClose={close}
+          onSave={(renamed) =>
+            void commit((current) => {
+              if (!current.accounts.some((a) => a.id === renamed.id))
+                throw new Error("Esse local foi excluído em outra aba ou dispositivo.");
+              return {
+                ...current,
+                accounts: current.accounts.map((a) => (a.id === renamed.id ? renamed : a)),
+              };
+            }, "Local renomeado.")
+          }
+        />,
+      ),
+    updateBalance: (account) =>
+      setModal(
+        <BalanceForm
+          data={data}
+          account={account}
+          initialDate={month === currentMonth() ? today() : undefined}
+          onClose={close}
+          onSave={(movement) =>
+            void commit((current) => {
+              const error = validateMovement(current, movement);
+              if (error) throw new Error(error);
+              return { ...current, movements: [...current.movements, movement] };
+            }, movement.kind === "opening" ? "Saldo inicial registrado." : "Saldo atualizado.")
           }
         />,
       ),
@@ -910,6 +972,17 @@ export default function App({
               : `Não foi possível iniciar o download do backup. ${cause}`,
           });
       })(),
+    exportCsv: () => {
+      try {
+        downloadFile(exportCsv(data), "text/csv;charset=utf-8", `cash-tracker-${today()}.csv`);
+        setNotice({ text: "Download da planilha iniciado. Confira seus downloads." });
+      } catch (error) {
+        setNotice({
+          text: error instanceof Error ? error.message : "Não foi possível gerar a planilha.",
+          error: true,
+        });
+      }
+    },
     restore: () => restoreInput.current?.click(),
     requestPersistence: () =>
       void requestPersistence()

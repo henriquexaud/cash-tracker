@@ -32,7 +32,10 @@
 - Reserva = saldos iniciais + aportes + rendimentos − retiradas. O total de saldo é de todo o histórico, incluindo lançamentos futuros; “guardado no mês” filtra o mês selecionado e considera aportes − retiradas.
 - Rendimentos aceitam perdas negativas. Movimentações comuns exigem valor diferente de zero; saldo inicial pode ser zero.
 - Cada local tem no máximo um saldo inicial. O ledger é validado por data, agrupando lançamentos do mesmo dia, e não pode ficar negativo.
-- Objetivos destinam saldo existente. A soma destinada não pode superar o saldo do local. A meta deve ser positiva; o modelo atual permite destinação acima da meta.
+- Objetivos destinam saldo existente. A soma destinada não pode superar o saldo do local. A meta deve ser positiva; o modelo atual permite destinação acima da meta. O prazo (`deadline`, `AAAA-MM`) é opcional: com ele, o card mostra quanto falta e quanto guardar por mês (`goalPlan`), contando o mês selecionado e o do prazo.
+- “Atualizar saldo” (`balanceUpdate`) recebe o saldo que o local mostra numa data: a diferença para o saldo registrado até essa data vira um rendimento (negativo se for perda) com a observação “Atualização de saldo”; num local sem movimentações vira o saldo inicial.
+- Excluir uma movimentação que deixaria o local negativo ou abaixo do destinado a objetivos é recusado com a explicação de `validateMovementRemoval`. Contas já em conflito ficam com o fluxo de revisão.
+- Lançamentos do mesmo dia não têm horário: as telas usam `compareMovementsNewestFirst` (saldo inicial, aportes, rendimentos e retiradas, lidos de baixo para cima). Em “Todo o histórico”, a Reserva agrupa por mês com o saldo do mês.
 - Registros com `datePrecision: "month"` usam o primeiro dia apenas para ordenação e são apresentados como mês, sem afirmar um dia conhecido.
 
 `validateBackup` reconstrói campos conhecidos e valida estrutura, duplicatas, referências e integridade financeira. Dados sincronizados podem preservar conflitos financeiros para correção explícita; isso não autoriza ignorar erros estruturais.
@@ -92,6 +95,8 @@ Lembrete mensal e avisos de Divisões são opcionais e por dispositivo. No modo 
 
 ## Histórico
 
+A aba Ano (`yearSummary`) mostra, para o ano escolhido, recebido, gastos previstos, guardado (aportes − retiradas), rendimentos e a porcentagem guardada do recebido, mês a mês. A variação salarial compara com o registro anterior; quando há meses faltando entre os dois, informa o mês comparado.
+
 Os filtros salarial e de orçamento incluem o ano selecionado mesmo sem registros. Ao mudar o ano no cabeçalho, um filtro de ano específico acompanha a mudança; “Todos os anos” permanece selecionado. O gráfico salarial usa uma janela de 12/36 meses até o mês do cabeçalho, inclusive, ou todo o histórico. Meses ausentes não geram salários artificiais.
 
 A cor do gasto deriva do ID, usando a paleta existente, e não do índice após ordenar/filtrar. O progresso de um objetivo limita a barra acessível à meta e descreve a destinação monetária integral quando a meta é superada.
@@ -103,6 +108,10 @@ O envelope JSON usa `format: "cash-tracker"`, `version: 1`, `exportedAt` e `data
 Uma exportação de estado financeiro conflitante pode conter `requiresReview: true`; a restauração continua exigindo integridade financeira. O histórico legado e a base existem por compatibilidade. Novas contas não recebem uma planilha nem dados de exemplo. Legado pendente apresenta “Conferir saldo da planilha” em Reserva, usando o formulário existente; sem local, o fluxo pede primeiro seu nome. A confirmação grava um único saldo inicial e preserva os valores antigos sem somá-los novamente.
 
 Na falha de carregamento inicial, restauração direta está disponível apenas no modo local. No modo cloud, é preciso abrir a conta/cache antes de restaurar em Configurações; esse pré-requisito preserva a mesclagem por registro.
+
+Configurações também exporta uma planilha CSV (`src/csv.ts`): `;` como separador, vírgula decimal, BOM UTF-8, uma linha por salário, gasto previsto, reserva planejada e movimentação. Textos que começariam uma fórmula recebem `'`. É apenas saída; restaurar continua sendo pelo backup JSON.
+
+O mês selecionado acompanha a virada do mês com o app aberto quando estava no mês atual. Com conta, os locais aparecem por nome, já que a ordem de criação não é preservada na sincronização.
 
 ## PWA e build
 
