@@ -57,9 +57,18 @@ async function deliver(jobs: { target: PushTarget; message: PushMessage }[]) {
 }
 
 Deno.serve(async (request) => {
-  const secret = env("PUSH_SECRET");
-  if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`)
+  // Trimmed on both sides: a secret pasted with a trailing space or line break is a common mistake.
+  const secret = env("PUSH_SECRET").trim();
+  const sent = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!secret || sent !== secret) {
+    // Never logs the secrets themselves, only what helps tell the two cases apart.
+    console.error(JSON.stringify({
+      error: "unauthorized",
+      reason: !secret ? "PUSH_SECRET not set in the function" : "Vault push_secret differs from PUSH_SECRET",
+      lengths: { function: secret.length, request: sent.length },
+    }));
     return new Response("Unauthorized", { status: 401 });
+  }
   if (missing.length) {
     console.error(JSON.stringify({ error: "missing secrets", missing }));
     return new Response("Function not configured", { status: 500 });
