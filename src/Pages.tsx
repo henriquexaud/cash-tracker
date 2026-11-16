@@ -39,7 +39,7 @@ import { Chart } from "./components/Chart";
 import { BudgetHistory } from "./components/BudgetHistory";
 import { useHistoryYear } from "./components/useHistoryYear";
 import { NotificationSettings } from "./components/NotificationSettings";
-import { DashboardActivity, DashboardPlanning } from "./components/DashboardDetails";
+import { DashboardActivity, DashboardFirstSteps, DashboardPlanning } from "./components/DashboardDetails";
 import { ThemePicker } from "./components/ThemePicker";
 import { useInstalledApp } from "./components/InstallGuide";
 import type { PageProps } from "./ui-types";
@@ -253,14 +253,15 @@ export function DashboardPage({ data, month, actions }: PageProps) {
                 : "Após os gastos aproximados."}
         </span>
       </div>
+      <DashboardFirstSteps data={data} month={month} actions={actions} />
       <DashboardPlanning data={data} month={month} actions={actions} />
       {(stats.count > 0 ||
         data.accounts.length > 0 ||
         data.legacy.status !== "none") && (
-        <div className="dashboard-detail-grid">
-          <div className="panel dashboard-history-panel">
-            <section className="dashboard-total">
-              <h2>Recebido no histórico</h2>
+        <>
+          <div className="dashboard-totals-grid">
+            <section className="panel dashboard-total" aria-labelledby="dashboard-income-total">
+              <h2 id="dashboard-income-total">Recebido no histórico</h2>
               <div className="lifetime-amount">{formatMoney(stats.total)}</div>
               <p className="subtle">
                 {stats.count} {stats.count === 1 ? "mês registrado" : "meses registrados"}
@@ -273,8 +274,8 @@ export function DashboardPage({ data, month, actions }: PageProps) {
                 Ver histórico <ArrowRight size={16} />
               </button>
             </section>
-            <section className="dashboard-total">
-              <h2>Saldo guardado</h2>
+            <section className="panel dashboard-total" aria-labelledby="dashboard-saved-total">
+              <h2 id="dashboard-saved-total">Saldo guardado</h2>
               <div className="lifetime-amount">
                 {confirmed ? formatMoney(wealth.total) : "A confirmar"}
               </div>
@@ -292,7 +293,7 @@ export function DashboardPage({ data, month, actions }: PageProps) {
             </section>
           </div>
           <DashboardActivity data={data} month={month} actions={actions} />
-        </div>
+        </>
       )}
     </div>
   );
@@ -543,7 +544,7 @@ export function HistoryPage(props: PageProps) {
       {tabs}
       <section className="history-overview">
         <div>
-          <span className="overline">TOTAL RECEBIDO NO HISTÓRICO</span>
+          <span className="overline">Total recebido no histórico</span>
           <div className="history-total">{formatMoney(stats.total)}</div>
           <p>
             {stats.first && monthLabel(stats.first.month, true)} —{" "}
@@ -679,13 +680,17 @@ export function HistoryPage(props: PageProps) {
               <p>Escolha outro ano ou registre um salário.</p>
             </div>
           )}
-        </div>
-        <div className="budget-list-total">
-          <span>
-            {filtered.length} {filtered.length === 1 ? "registro" : "registros"}{" "}
-            {year === "all" ? "no histórico" : `em ${year}`}
-          </span>
-          <strong>{formatMoney(annualTotal)}</strong>
+          {filtered.length > 0 && (
+            <div className="history-row history-total-row">
+              <span>
+                {filtered.length} {filtered.length === 1 ? "registro" : "registros"}{" "}
+                {year === "all" ? "no histórico" : `em ${year}`}
+              </span>
+              <strong>{formatMoney(annualTotal)}</strong>
+              <span />
+              <span />
+            </div>
+          )}
         </div>
       </section>
     </>

@@ -174,6 +174,27 @@ export default function App({
   const restoreInput = useRef<HTMLInputElement>(null);
   const recoveryInput = useRef<HTMLInputElement>(null);
   const channel = useRef<BroadcastChannel | null>(null);
+  const mainContent = useRef<HTMLElement>(null);
+  const shownMonth = useRef(month);
+  // Changing the month slides the page content (not the heading) a few pixels
+  // in the direction of travel, without remounting the page or losing its state.
+  useEffect(() => {
+    const previous = shownMonth.current;
+    shownMonth.current = month;
+    if (previous === month || !mainContent.current) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const offset = month > previous ? 8 : -8;
+    for (const element of mainContent.current.querySelectorAll<HTMLElement>(
+      ":scope > :not(.page-heading)",
+    ))
+      element.animate?.(
+        [
+          { opacity: 0.35, transform: `translateX(${offset}px)` },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+      );
+  }, [month]);
   const savingRef = useRef(false);
 
   const initialize = async () => {
@@ -1019,7 +1040,7 @@ export default function App({
             </a>
           </div>
         </header>
-        <main id="main-content" className={`main-content page-${page}`}>
+        <main id="main-content" ref={mainContent} className={`main-content page-${page}`}>
           <div className="page-heading">
             <div>
               <h1>
